@@ -1,4 +1,4 @@
-appId: com.electron.app
+appId: com.toolsngon.app
 productName: toolsngon
 directories:
   buildResources: build

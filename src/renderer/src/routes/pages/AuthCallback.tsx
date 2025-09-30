@@ -11,7 +11,7 @@ export default function AuthCallback() {
     const sessionId = searchParams.get("session_id")
     const navigate = useNavigate()
     const { loginWithCode } = useAuth()
-    const checkAuth = async () => {
+    const checkAuth = async (): Promise<void> => {
         try {
             await loginWithCode({ session_id: sessionId!, code: code! })
             navigate('/dashboard')
@@ -24,7 +24,7 @@ export default function AuthCallback() {
     useEffect(() => {
         console.log(code,sessionId)
         if (code && sessionId) {
-            checkAuth();
+            void checkAuth();
         }
     }, [code, sessionId])
 

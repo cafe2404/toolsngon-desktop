@@ -1,11 +1,29 @@
 export {}
 
+export type Account = {
+  id: number
+  name: string
+  script: string
+}
+export type AccountGroup = {
+  id: number
+  name: string
+  type: string
+  accounts: Account[]
+}
+export type Product = {
+  id: number
+  title: string
+  slug: string
+  logo_url: string
+  url: string
+}
 export type UserProduct = {
   id: number
-  product: { id: number; title: string; slug: string; logo_url: string; url: string }
+  product: Product
   combo: { id: number; name: string } | null
   variant_duration: { id: number; label: string; type: string; value: number }
-  account_group: { id: number; name: string; type: string } | null
+  account_group?: AccountGroup
   start_date: string
   end_date: string
   is_active: boolean

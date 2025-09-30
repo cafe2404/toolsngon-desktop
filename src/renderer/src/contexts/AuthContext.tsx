@@ -66,7 +66,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [refreshToken])
 
     const logout = useCallback(async () => {
-        await clearAuth()
+        try {
+            // Clear renderer auth
+            await clearAuth()
+            // Clear BrowserView instances and their data
+            // @ts-ignore: exposed by preload
+            await window.api?.browserView?.destroyAll?.()
+            // @ts-ignore: exposed by preload
+            await window.api?.browserView?.clearData?.()
+        } catch {
+            // noop
+        }
     }, [clearAuth])
 
     useEffect(() => {

@@ -1,35 +1,40 @@
-/* eslint-disable @typescript-eslint/explicit-function-return-type */
-import { useSearch } from '@renderer/contexts/SearchContext'
-import { Bolt, LayoutGrid, Plus, Store } from 'lucide-react'
+import { CircleQuestionMark, LayoutGrid, LogOut, Store } from 'lucide-react'
 import logoSvg from '../assets/logo.svg'
-import { UserDropdownMenu } from './UserDropdownMenu'
 import { useTabs } from '../contexts/TabContext'
+import { useAuth } from '../contexts/AuthContext'
+import { JSX } from 'react'
 
-export default function Sidebar() {
-    const { openSearchModal } = useSearch()
-    const { switchTab } = useTabs()
+export default function Sidebar(): JSX.Element {
+    const { switchTab, currentTab } = useTabs()
+    const { user, logout } = useAuth()
+
     return (
         <div className="p-2 flex flex-col justify-between h-full bg-blue-700 relative">
             <div className='flex gap-2 flex-col items-center'>
-                <div className='w-7 py-2 flex items-center justify-center'>
+                <a href='https://toolsngon.com' target='_blank' rel="noreferrer" className='w-7 py-2 flex items-center justify-center'>
                     <img src={logoSvg} alt="" />
-                </div>
-                <button onClick={() => switchTab("1")} className='px-3 py-2 rounded-md hover:bg-blue-800 text-blue-50 flex items-center justify-center duration-300'>
+                </a>
+                <button onClick={() => switchTab("1")} className={`px-3 py-2 rounded-md text-blue-50 flex items-center justify-center duration-300 ${currentTab.id === '1' ? 'bg-blue-800' : 'hover:bg-blue-800'}`}>
                     <LayoutGrid size={20} />
                 </button>
-                <button onClick={openSearchModal} className='px-3 py-2 rounded-md hover:bg-blue-800 text-blue-50 flex items-center justify-center duration-300'>
-                    <Plus size={20} />
+
+                <button onClick={() => switchTab("2")} className={`px-3 py-2 rounded-md text-blue-50 flex items-center justify-center duration-300 ${currentTab.id === '2' ? 'bg-blue-800' : 'hover:bg-blue-800'}`}>
+                    <CircleQuestionMark size={20} />
                 </button>
             </div>
             <div className='flex gap-2 py-2 flex-col items-center'>
-                <button className='px-3 py-2 rounded-md hover:bg-blue-800 text-blue-50 flex items-center justify-center duration-300'>
+
+                <a href='https://toolsngon.com/store' target='_blank' rel="noreferrer" className='px-3 py-2 rounded-md hover:bg-blue-800 text-blue-50 flex items-center justify-center duration-300'>
                     <Store size={20}></Store>
-                </button>
-                <button className='px-3 py-2 rounded-md hover:bg-blue-800 text-blue-50 flex items-center justify-center duration-300'>
-                    <Bolt size={20}></Bolt>
-                </button>
-              
-                <UserDropdownMenu  />
+                </a>
+                <div onClick={logout} className='px-3 py-2 rounded-md relative group hover:bg-blue-800 text-blue-50 flex items-center justify-center duration-300'>
+                    <LogOut size={20}></LogOut>
+                </div>
+                <a href='https://toolsngon.com/settings' target='_blank' rel="noreferrer" className={`px-1 py-2 rounded-md text-blue-50 flex items-center justify-center`}>
+                    <div className='w-7 flex aspect-square rounded-full overflow-hidden focus:outline-none hover:bg-blue-800 text-blue-50  items-center justify-center'>
+                        <img className="object-cover w-full h-full" src={user?.avatar_url} alt="" />
+                    </div>
+                </a>
             </div>
         </div>
     )

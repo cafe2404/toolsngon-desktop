@@ -13,7 +13,7 @@ export default function Dashboard() {
     const [loading, setLoading] = useState<boolean>(true)
     const [error, setError] = useState<string | null>(null)
     const [query, setQuery] = useState<string>("")
-    const { currentTab } = useTabs()    
+    const { currentTab } = useTabs()
     useEffect(() => {
         const load = async () => {
             try {
@@ -28,7 +28,6 @@ export default function Dashboard() {
         }
         load()
     }, [])
-
     const filteredItems = useMemo(() => {
         const normalizedQuery = query.trim().toLowerCase()
         if (normalizedQuery.length === 0) return items
@@ -47,7 +46,7 @@ export default function Dashboard() {
     }, [items, query])
 
     return (
-        <div className={`w-full flex flex-col gap-6 p-6 h-full overflow-y-auto`} style={{display: currentTab.id === "1" ? "block" : "none"}}   >
+        <div className={`w-full flex flex-col gap-6 p-6 h-full overflow-y-auto`} style={{ display: currentTab.id === "1" ? "flex" : "none" }}   >
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 w-2xl">
                     <div className="relative border border-slate-200 w-full h-10 rounded-lg gap-1 no-drag flex items-center px-1 py-1">
@@ -89,7 +88,7 @@ export default function Dashboard() {
                     ) : (
                         <div className={viewMode === 'Grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5 gap-4' : 'flex flex-col gap-2'}>
                             {filteredItems.map(item => (
-                                <ProductCard key={item.id} item={item}/>
+                                <ProductCard key={item.id} item={item} />
                             ))}
                         </div>
                     )}

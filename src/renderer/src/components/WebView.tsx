@@ -1,131 +1,85 @@
-/* eslint-disable react/no-unknown-property */
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/explicit-function-return-type */
-import { useEffect, useRef } from "react"
+import { useEffect, useLayoutEffect, useRef } from "react"
 import { Tab, useTabs } from "../contexts/TabContext"
 
-export default function WebView(tab: Tab) {
-    const webviewRef = useRef<Electron.WebviewTag>(null);
-    const { currentTab, updateTab, registerWebview } = useTabs()
-    useEffect(() => {
-        const webview = webviewRef.current
-        if (!webview) return
-        registerWebview(tab.id, webview)
+export default function WebView({ tab }: { tab: Tab }): React.JSX.Element {
+    const containerRef = useRef<HTMLDivElement>(null)
+    const { currentTab, updateTab } = useTabs()
 
-        const handleDidFinishLoad = () => {
-            try {
-                const title = webview.getTitle()
-                if (title) updateTab(tab.id, { title })
-                updateTab(tab.id, {
-                    isLoading: false,
-                    canGoBack: webview.canGoBack(),
-                    canGoForward: webview.canGoForward(),
-                    currentUrl: webview.getURL(),
-                })
-            } catch {
-                // ignore
+    // Attach a BrowserView for this tab on mount and manage its bounds
+    useLayoutEffect((): () => void => {
+        const id = tab.id
+        const initialUrl = tab.url
+        const calcBounds = (): { x: number; y: number; width: number; height: number } => {
+            const el = containerRef.current
+            if (!el) return { x: 0, y: 0, width: 0, height: 0 }
+            const rect = el.getBoundingClientRect()
+            return {
+                x: Math.floor(rect.left),
+                y: Math.floor(rect.top),
+                width: Math.floor(rect.width),
+                height: Math.floor(rect.height),
             }
         }
+        window.api?.browserView?.attach(id, initialUrl, calcBounds(), false)
+        updateTab(id, { viewReady: true })
+        // No injection here; handled by the caller after tab creation
 
-        const handleDomReady = async () => {
-            try {
-                const favicon = `http://www.google.com/s2/favicons?domain=${webview.getURL()}`
-                updateTab(tab.id, { favicon: favicon ?? undefined })
-            } catch {
-                // ignore favicon errors
+        const onResize = (): void => {
+            // @ts-ignore: exposed by preload (api.browserView.setBounds)
+            window.api?.browserView?.setBounds(id, calcBounds())
+        }
+        window.addEventListener('resize', onResize)
+
+        let ro: ResizeObserver | null = null
+        if (typeof ResizeObserver !== 'undefined' && containerRef.current) {
+            ro = new ResizeObserver(() => onResize())
+            ro.observe(containerRef.current)
+        }
+
+        const updateHandler = (payload: { id: string; updates: Record<string, unknown> }): void => {
+            if (payload.id !== id) return
+            updateTab(id, payload.updates as Partial<Tab>)
+        }
+        // @ts-ignore: exposed by preload (api.onBrowserViewUpdate)
+        const unsubscribe = window.api?.onBrowserViewUpdate(updateHandler)
+
+        return (): void => {
+            window.removeEventListener('resize', onResize)
+            if (ro) ro.disconnect()
+            // @ts-ignore: exposed by preload (api.browserView.destroy)
+            window.api?.browserView?.destroy(id)
+            updateTab(id, { viewReady: false})
+            if (typeof unsubscribe === 'function') unsubscribe()
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tab.id])
+
+    // When this tab becomes current, bring its BrowserView to front and refresh bounds
+    useEffect((): void => {
+        if (currentTab.id !== tab.id) return
+        const id = tab.id
+        const calcBounds = (): { x: number; y: number; width: number; height: number } => {
+            const el = containerRef.current
+            if (!el) return { x: 0, y: 0, width: 0, height: 0 }
+            const rect = el.getBoundingClientRect()
+            return {
+                x: Math.floor(rect.left),
+                y: Math.floor(rect.top),
+                width: Math.floor(rect.width),
+                height: Math.floor(rect.height),
             }
         }
-
-        const handlePageTitleUpdated = () => {
-            try {
-                const title = webview.getTitle()
-                if (title) updateTab(tab.id, { title })
-            } catch {
-                // ignore
-            }
+        // Re-attach without URL to just focus/show this BrowserView
+        // Double-check current tab right before attach to avoid races
+        if (currentTab.id === id) {
+            // @ts-ignore: exposed by preload (api.browserView.attach)
+            window.api?.browserView?.attach(id, undefined, calcBounds(), true)
+            // @ts-ignore: exposed by preload (api.browserView.setBounds)
+            window.api?.browserView?.setBounds(id, calcBounds())
         }
-
-        const handleDidNavigate = () => {
-            try {
-                const currentUrl = webview.getURL()
-                if (currentUrl) updateTab(tab.id, { currentUrl })
-                updateTab(tab.id, { canGoBack: webview.canGoBack(), canGoForward: webview.canGoForward() })
-            } catch {
-                // ignore
-            }
-        }
-        const handleDidNavigateInPage = () => {
-            try {
-                const currentUrl = webview.getURL()
-                if (currentUrl) updateTab(tab.id, { currentUrl })
-                updateTab(tab.id, { canGoBack: webview.canGoBack(), canGoForward: webview.canGoForward() })
-            } catch {
-                // ignore
-            }
-        }
-
-        const handleDidStartLoading = () => {
-            updateTab(tab.id, { isLoading: true })
-        }
-        const handleDidStopLoading = () => {
-            try {
-                updateTab(tab.id, {
-                    isLoading: false,
-                    canGoBack: webview.canGoBack(),
-                    canGoForward: webview.canGoForward(),
-                    currentUrl: webview.getURL(),
-                })
-            } catch {
-                // ignore
-            }
-        }
-        const handleDidFailLoad = (event: { errorCode: number }) => {
-            if (event.errorCode === -3) return
-            updateTab(tab.id, { isLoading: false })
-        }
-        // Khi trang cố gắng mở popup
-        const handleWillNavigate = (e: any) => {
-            if (e.url && e.url !== webview.getURL()) {
-                e.preventDefault?.()
-                webview.loadURL(e.url) // 👉 Chuyển hướng popup vào chính webview này
-            }
-        }
-
-        // Một số site không dùng 'new-window' mà dùng 'will-navigate'
-        webview.addEventListener('new-window', handleWillNavigate)
-        webview.addEventListener('will-navigate', handleWillNavigate)
-        webview.addEventListener("did-start-loading", handleDidStartLoading)
-        webview.addEventListener("did-stop-loading", handleDidStopLoading)
-        webview.addEventListener("did-finish-load", handleDidFinishLoad)
-        webview.addEventListener("did-fail-load", handleDidFailLoad as any)
-        webview.addEventListener("dom-ready", handleDomReady)
-        webview.addEventListener("page-title-updated", handlePageTitleUpdated)
-        webview.addEventListener("did-navigate", handleDidNavigate)
-        webview.addEventListener("did-navigate-in-page", handleDidNavigateInPage)
-
-        return () => {
-            webview.removeEventListener("did-start-loading", handleDidStartLoading)
-            webview.removeEventListener("did-stop-loading", handleDidStopLoading)
-            webview.removeEventListener("did-finish-load", handleDidFinishLoad)
-            webview.removeEventListener("did-fail-load", handleDidFailLoad as any)
-            webview.removeEventListener("dom-ready", handleDomReady)
-            webview.removeEventListener("page-title-updated", handlePageTitleUpdated)
-            webview.removeEventListener("did-navigate", handleDidNavigate)
-            webview.removeEventListener("did-navigate-in-page", handleDidNavigateInPage)
-            webview.removeEventListener('new-window', handleWillNavigate)
-            webview.removeEventListener('will-navigate', handleWillNavigate)
-
-            registerWebview(tab.id, null)
-        }
-    }, [tab.id, updateTab, registerWebview])
+    }, [currentTab.id, tab.id])
 
     return (
-        <div className="w-full h-full" style={{ display: tab.id === currentTab.id ? "block" : "none" }}>
-            <webview
-                ref={webviewRef}
-                src={tab.url}
-                className="w-full h-full "
-            ></webview>
-        </div>
+        <div ref={containerRef} className="w-full h-full" style={{ display: tab.id === currentTab.id ? "block" : "none" }} />
     )
 }

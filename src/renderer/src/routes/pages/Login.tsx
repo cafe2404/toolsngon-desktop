@@ -25,13 +25,13 @@ export default function Login() {
         }
     }
     useEffect(() => {
-        window.api.onDeepLink((url) => {
+        const unsubscribe = window.api.onDeepLink((url) => {
             const parsed = new URL(url)
             console.log(parsed)
             navigate("/auth/callback" + parsed.search)
             console.log("Renderer nhận deeplink:", url)
-
         })
+        return () => { try { (unsubscribe as unknown as (() => void) | undefined)?.() } catch { /* noop */ } }
     }, [navigate])
 
     return (
