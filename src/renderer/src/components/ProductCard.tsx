@@ -27,7 +27,7 @@ const ProductCard = ({ item }: { item: UserProduct }) => {
             url: item.product.url,
             currentUrl: item.product.url,
             favicon: item.product.logo_url,
-            accounts: item.account_group?.accounts ?? [],
+            account: currentAccount,
             pendingScript: currentAccount?.script
         })
         if (currentAccount?.script) {

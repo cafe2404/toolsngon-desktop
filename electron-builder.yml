@@ -1,5 +1,5 @@
 appId: com.toolsngon.app
-productName: toolsngon
+productName: Toolsngon
 directories:
   buildResources: build
 files:
@@ -11,6 +11,9 @@ files:
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
 asarUnpack:
   - resources/**
+extraResources:
+  - from: extension/
+    to: extension/
 win:
   executableName: toolsngon
 nsis:
@@ -39,5 +42,6 @@ appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false
 publish:
-  provider: generic
-  url: https://example.com/auto-updates
+  provider: github
+  owner: cafe2404
+  repo: toolsngon-desktop

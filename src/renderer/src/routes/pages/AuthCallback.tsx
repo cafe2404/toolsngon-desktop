@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { useAuth } from "@contexts/AuthContext"
 import { LoaderCircle } from "lucide-react"
 import { useEffect } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
+import { toast } from "sonner"
 
 export default function AuthCallback() {
     const [searchParams] = useSearchParams()
@@ -13,16 +15,31 @@ export default function AuthCallback() {
     const { loginWithCode } = useAuth()
     const checkAuth = async (): Promise<void> => {
         try {
-            await loginWithCode({ session_id: sessionId!, code: code! })
+            const device_uuid = await window.os.getDeviceUUID()
+            const appInfo = await window.os.getAppInfo()
+            await loginWithCode({
+                session_id: sessionId!,
+                code: code!, device_uuid,
+                app_info: appInfo
+            })
             navigate('/dashboard')
         }
-        catch (err) {
-            console.log("err", err)
+        catch (err: any) {
+            const errorMsg = err?.response?.data?.detail || err?.response?.data?.message || "Lỗi không xác định"
+            console.log("err", errorMsg)
+            const toastId = toast.error(errorMsg, {
+                duration: Infinity,
+                action: {
+                    label: "Dismiss",
+                    onClick: () => toast.dismiss(toastId),
+                },
+            }
+            )
             navigate('/login')
         }
     }
     useEffect(() => {
-        console.log(code,sessionId)
+        console.log(code, sessionId)
         if (code && sessionId) {
             void checkAuth();
         }

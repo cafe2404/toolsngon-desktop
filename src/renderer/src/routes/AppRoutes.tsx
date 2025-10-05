@@ -41,6 +41,7 @@ function AppRoutes(): React.JSX.Element {
                                     <Route path="/login" element={<Login />} />
                                 </Route>
                                 <Route path="*" element={<Navigate to="/login" replace />} />
+                            
                             </Routes>
                         </SearchProvider>
                     </TabProvider>

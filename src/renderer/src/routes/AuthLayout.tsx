@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 import logoSvg from '../assets/logo_2.svg'
 import { Outlet } from 'react-router-dom';
+import { Toaster } from "@components/ui/sonner"
 
 const AuthLayout = () => {
     return (
@@ -15,6 +16,7 @@ const AuthLayout = () => {
                 <Outlet />
             </div>
             <p className='absolute bottom-4 text-xs text-slate-600'>Do not sell or share my personal info</p>
+            <Toaster position='top-center' />
         </div>
     )
 }

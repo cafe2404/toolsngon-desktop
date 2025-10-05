@@ -17,8 +17,8 @@ export type Tab = {
   isLoading?: boolean
   canGoBack?: boolean
   canGoForward?: boolean
-  component?: React.ComponentType,
-  accounts?: Account[]
+  component?: React.ComponentType
+  account?: Account
   currentAccountId?: number
   viewReady?: boolean
   pendingScript?: string | null
@@ -246,8 +246,8 @@ export function TabProvider({ children }: { children: ReactNode }): React.JSX.El
 
   const getCurrentAccount = (tabId: string): Account | undefined => {
     const tab = tabs.find(t => t.id === tabId)
-    if (!tab || !tab.accounts || !tab.currentAccountId) return undefined
-    return tab.accounts.find(account => account.id === tab.currentAccountId)
+    if (!tab || !tab.account) return undefined
+    return tab.account
   }
 
   const switchAccount = (tabId: string, accountId: number): void => {

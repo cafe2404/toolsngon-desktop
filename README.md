@@ -1,6 +1,6 @@
 # toolsngon
 
-An Electron application with React and TypeScript
+An account sharing app made for you
 
 ## Recommended IDE Setup
 

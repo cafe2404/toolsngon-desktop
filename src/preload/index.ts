@@ -38,18 +38,26 @@ const api = {
 
     injectScript: (id: string, script: string) =>
       ipcRenderer.invoke('bv:inject-script', { id, script })
-  }
+  },
 }
+
 const authApi = {
   save: (access: string, refresh: string) => ipcRenderer.invoke('auth:save', { access, refresh }),
   get: () => ipcRenderer.invoke('auth:get'),
-  clear: () => ipcRenderer.invoke('auth:clear')
+  clear: () => ipcRenderer.invoke('auth:clear'),
 }
+
+const osApi = {
+  getDeviceUUID: () => ipcRenderer.invoke('os:get-device-uuid'),
+  getAppInfo : () => ipcRenderer.invoke("os:get-app-info"),
+}
+
 if (process.contextIsolated) {
   try {
     contextBridge.exposeInMainWorld('electron', electronAPI)
     contextBridge.exposeInMainWorld('api', api)
     contextBridge.exposeInMainWorld('auth', authApi)
+    contextBridge.exposeInMainWorld('os', osApi)
   } catch (error) {
     console.error(error)
   }

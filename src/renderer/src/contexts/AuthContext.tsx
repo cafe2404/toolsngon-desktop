@@ -16,7 +16,7 @@ type AuthContextType = {
     refreshToken: string | null
     isLoading: boolean
     isAuthenticated: boolean
-    loginWithCode: (params: { session_id: string; code: string }) => Promise<void>
+    loginWithCode: (params: { session_id: string; code: string, device_uuid: string, app_info: { device_name: string; os: string; app_version: string } }) => Promise<void>
     logout: () => Promise<void>
     refresh: () => Promise<void>
 }
@@ -50,8 +50,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(res.data)
     }, [accessToken])
 
-    const loginWithCode = useCallback(async ({ session_id, code }: { session_id: string; code: string }) => {
-        const res = await api.post('/api/app_auth/exchange_token/', { session_id, code })
+    const loginWithCode = useCallback(async (
+        { session_id, code, device_uuid, app_info }:
+            { session_id: string; code: string, device_uuid: string, app_info: { device_name: string; os: string; app_version: string } }
+    ) => {
+        const res = await api.post('/api/app_auth/exchange_token/', { session_id, code, device_uuid, app_info })
         const data = res.data as { access: string; refresh: string }
         await saveTokens({ access: data.access, refresh: data.refresh })
         await fetchMe()
@@ -67,12 +70,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const logout = useCallback(async () => {
         try {
-            // Clear renderer auth
             await clearAuth()
-            // Clear BrowserView instances and their data
-            // @ts-ignore: exposed by preload
             await window.api?.browserView?.destroyAll?.()
-            // @ts-ignore: exposed by preload
             await window.api?.browserView?.clearData?.()
         } catch {
             // noop

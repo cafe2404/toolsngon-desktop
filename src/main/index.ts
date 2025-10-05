@@ -1,11 +1,20 @@
-import { app, shell, BrowserWindow, ipcMain, BrowserView, session, Menu } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, BrowserView, Menu, protocol } from 'electron'
 import path, { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { saveTokens, getAccessToken, getRefreshToken, clearTokens } from './auth'
+import { machineIdSync } from 'node-machine-id'
+import { autoUpdater } from 'electron-updater'
+import os from 'os'
 
 let mainWindow
 
+autoUpdater.on('update-downloaded', () => {
+  autoUpdater.quitAndInstall()
+})
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'chrome-extension', privileges: { secure: true, standard: true } }
+])
 if (process.defaultApp) {
   if (process.argv.length >= 2) {
     app.setAsDefaultProtocolClient('toolsngon', process.execPath, [path.resolve(process.argv[1])])
@@ -64,6 +73,7 @@ if (!gotTheLock) {
 } else {
   app.on('second-instance', (_, argv) => {
     // Windows/Linux: deeplink nằm trong argv
+    autoUpdater.checkForUpdatesAndNotify()
     const url = argv.find((arg) => arg.startsWith('toolsngon://'))
     if (url && mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore()
@@ -76,14 +86,9 @@ if (!gotTheLock) {
     // Set app user model id for windows
     electronApp.setAppUserModelId('com.toolsngon')
 
-    // Default open or close DevTools by F12 in development
-    // and ignore CommandOrControl + R in production.
-    // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
     app.on('browser-window-created', (_, window) => {
       optimizer.watchWindowShortcuts(window)
     })
-
-    // IPC test
     ipcMain.on('ping', () => console.log('pong'))
     ipcMain.handle('open-external', async (_, url) => {
       await shell.openExternal(url)
@@ -108,22 +113,16 @@ if (!gotTheLock) {
 
     // Load chromium extension path if present (used for per-tab sessions too)
     let extensionPath: string | null = null
-    try {
-      const fs = await import('fs')
-      const devPath = path.resolve(
-        __dirname,
-        '../../resources/extension/clcfeejalfmjdkkmkcnmkggajcjhncad'
+    if (is.dev) {
+      // 🛠️ Dev mode: load từ source
+      extensionPath = path.resolve(__dirname, '../../extension/clcfeejalfmjdkkmkcnmkggajcjhncad')
+    } else {
+      // 📦 Prod: load từ thư mục unpacked
+      extensionPath = path.join(
+        process.resourcesPath,
+        'extension',
+        'clcfeejalfmjdkkmkcnmkggajcjhncad'
       )
-      const prodPath = path.join(process.resourcesPath, 'extension', 'etsy')
-      extensionPath = fs.existsSync(devPath) ? devPath : fs.existsSync(prodPath) ? prodPath : null
-      if (extensionPath) {
-        // Also load into defaultSession for any default use
-        session.defaultSession.extensions
-          .loadExtension(extensionPath, { allowFileAccess: true })
-          .catch(() => {})
-      }
-    } catch {
-      /* noop */
     }
 
     // BrowserView manager
@@ -138,24 +137,21 @@ if (!gotTheLock) {
       height: number
     }): Electron.Rectangle => bounds as Electron.Rectangle
 
-    const attachView = (
+    const attachView = async (
       id: string,
       url?: string,
       activate: boolean = true
-    ): BrowserView | undefined => {
+    ): Promise<BrowserView | undefined> => {
       let view = views.get(id)
       if (!view) {
         // Create an isolated persistent session for each tab id
         const partition = `persist:tab-${id}`
         view = new BrowserView({ webPreferences: { sandbox: false, partition } })
         views.set(id, view)
-        
-        // Set user agent for this session
-        // const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'
-        // view.webContents.setUserAgent(userAgent)
         if (extensionPath && url && url.includes('etsy')) {
+          console.log(extensionPath)
           try {
-            view.webContents.session.extensions
+            await view.webContents.session.extensions
               .loadExtension(extensionPath, { allowFileAccess: true })
               .catch(() => {
                 /* noop */
@@ -225,27 +221,29 @@ if (!gotTheLock) {
             canGoForward: view!.webContents.navigationHistory.canGoForward()
           })
         )
-        view.webContents.on('context-menu', (_, params) => {
-          const menu = Menu.buildFromTemplate([
-            {
-              label: 'Inspect Element',
-              click: () => {
-                view!.webContents.inspectElement(params.x, params.y)
-              }
-            },
-            {
-              label: 'Toggle DevTools',
-              click: () => {
-                if (view!.webContents.isDevToolsOpened()) {
-                  view!.webContents.closeDevTools()
-                } else {
-                  view!.webContents.openDevTools({ mode: 'detach' })
+        if (is.dev) {
+          view.webContents.on('context-menu', (_, params) => {
+            const menu = Menu.buildFromTemplate([
+              {
+                label: 'Inspect Element',
+                click: () => {
+                  view!.webContents.inspectElement(params.x, params.y)
+                }
+              },
+              {
+                label: 'Toggle DevTools',
+                click: () => {
+                  if (view!.webContents.isDevToolsOpened()) {
+                    view!.webContents.closeDevTools()
+                  } else {
+                    view!.webContents.openDevTools({ mode: 'detach' })
+                  }
                 }
               }
-            }
-          ])
-          menu.popup()
-        })
+            ])
+            menu.popup()
+          })
+        }
       }
       if (url) {
         try {
@@ -261,8 +259,8 @@ if (!gotTheLock) {
       return view
     }
 
-    ipcMain.handle('bv:attach', (_e, { id, url, bounds, activate }) => {
-      const view = attachView(id, url, activate)
+    ipcMain.handle('bv:attach', async (_e, { id, url, bounds, activate }) => {
+      const view = await attachView(id, url, activate)
       if (view && bounds) {
         view.setBounds(computeBounds(bounds))
       }
@@ -359,7 +357,6 @@ if (!gotTheLock) {
       }
       return true
     })
-
     ipcMain.handle('bv:inject-script', async (_e, { id, script }) => {
       const v = getView(id)
       if (!v || !script) {
@@ -381,6 +378,13 @@ if (!gotTheLock) {
           const resJson: { token: string } = await res.json()
           return resJson.token
         }
+        const parseCookies = (cookieString: string): Record<string, string> =>
+          Object.fromEntries(
+            cookieString.split(';').map((c) => {
+              const [k, ...v] = c.trim().split('=')
+              return [k, v.join('=')]
+            })
+          )
         const cookies = session.cookies
         const ctx = {
           webContents: v.webContents,
@@ -388,6 +392,7 @@ if (!gotTheLock) {
           cookies,
           URL,
           fetch2fa,
+          parseCookies,
           loadURL: (url: string) => {
             return v.webContents.loadURL(url)
           },
@@ -403,7 +408,17 @@ if (!gotTheLock) {
         return false
       }
     })
-
+    ipcMain.handle('os:get-device-uuid', async () => {
+      const device_uuid = machineIdSync()
+      return device_uuid
+    })
+    ipcMain.handle('os:get-app-info', async () => {
+      return {
+        device_name: os.hostname(),
+        os: os.platform(),
+        app_version: app.getVersion()
+      }
+    })
     app.on('will-quit', () => {
       try {
         /* noop */
