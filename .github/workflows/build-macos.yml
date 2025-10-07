@@ -5,43 +5,41 @@ on:
     branches:
       - main
     tags:
-      - 'v*.*.*'
+      - 'v*.*.*' # Chỉ chạy khi push tag
 
 jobs:
   build-macos:
     runs-on: macos-latest
     env:
-      GH_TOKEN: ${{ secrets.GH_TOKEN }}
-
+        GH_TOKEN: ${{ secrets.GH_TOKEN }}
     steps:
-      - name: Checkout source code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
+          # Use Node 20 as specified in the original script
           node-version: 20
 
-      - name: Install dependencies
+      - name: Install JavaScript dependencies
+        # Install all dependencies normally
         run: npm install
+        
+      # --- FIX for keytar universal build starts here ---
+      - name: Rebuild native dependencies (Fixes 'keytar' issue)
+        # This step forces native modules like keytar to be compiled for the target Electron version and architecture(s).
+        # This is essential for the --universal flag to succeed.
+        run: npx electron-builder install-app-deps
+      # --- FIX for keytar universal build ends here ---
 
-      # 🐍 Cài Python & distutils để hỗ trợ node-gyp build native modules (VD: keytar)
-      - name: Install Python and setuptools
+      - name: Build and Publish Electron app
+        # The 'publish:mac' script handles the final packaging with --mac --universal
         run: |
-          brew install python@3.11
-          python3 -m pip install --upgrade pip setuptools wheel
+          npm run publish:mac
 
-      # 🔧 Rebuild native modules để tương thích với Electron
-      - name: Rebuild native modules
-        run: npx electron-rebuild --force
-
-      # 🛠️ Build Universal DMG
-      - name: Build Electron app (Universal)
-        run: npm run publish:mac
-
-      # 📦 Upload artifact để tải về sau khi build
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v4
         with:
           name: macos-dmg
           path: dist/*.dmg
+
