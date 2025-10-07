@@ -5,9 +5,18 @@ import { useAuth } from '../contexts/AuthContext'
 import { JSX } from 'react'
 
 export default function Sidebar(): JSX.Element {
-    const { switchTab, currentTab } = useTabs()
+    const { switchTab, currentTab, addTab } = useTabs()
     const { user, logout } = useAuth()
-
+    const handleOpenTab = async (): Promise<void> => {
+        await addTab({
+            id: "2",
+            name: 'introdution',
+            title: 'Hướng dẫn',
+            type: 'external',
+            url: 'https://toolsngon.com/introdution',
+            currentUrl: 'https://toolsngon.com/introdution',
+        })
+    }
     return (
         <div className="p-2 flex flex-col justify-between h-full bg-blue-700 relative">
             <div className='flex gap-2 flex-col items-center'>
@@ -18,12 +27,11 @@ export default function Sidebar(): JSX.Element {
                     <LayoutGrid size={20} />
                 </button>
 
-                <button onClick={() => switchTab("2")} className={`px-3 py-2 rounded-md text-blue-50 flex items-center justify-center duration-300 ${currentTab.id === '2' ? 'bg-blue-800' : 'hover:bg-blue-800'}`}>
+                <button onClick={handleOpenTab} className={`px-3 py-2 rounded-md text-blue-50 flex items-center justify-center duration-300 ${currentTab.id === '2' ? 'bg-blue-800' : 'hover:bg-blue-800'}`}>
                     <CircleQuestionMark size={20} />
                 </button>
             </div>
             <div className='flex gap-2 py-2 flex-col items-center'>
-
                 <a href='https://toolsngon.com/store' target='_blank' rel="noreferrer" className='px-3 py-2 rounded-md hover:bg-blue-800 text-blue-50 flex items-center justify-center duration-300'>
                     <Store size={20}></Store>
                 </a>

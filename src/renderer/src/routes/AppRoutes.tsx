@@ -9,7 +9,7 @@ import { AuthProvider } from '@contexts/AuthContext'
 import { useAuth } from '@contexts/AuthContext'
 import { TabProvider } from '../contexts/TabContext'
 import TabContent from './pages/TabContent'
-import { TooltipProvider } from "@components/ui/tooltip"
+import { PanelProvider } from '../contexts/PanelContext'
 
 function PrivateRoute({ children }: { children: React.JSX.Element }): React.JSX.Element | null {
     const { isAuthenticated, isLoading } = useAuth()
@@ -25,7 +25,7 @@ function PublicRoute({ children }: { children: React.JSX.Element }): React.JSX.E
 function AppRoutes(): React.JSX.Element {
     return (
         <HashRouter>
-            <TooltipProvider>
+            <PanelProvider>
                 <AuthProvider>
                     <TabProvider>
                         <SearchProvider>
@@ -34,19 +34,17 @@ function AppRoutes(): React.JSX.Element {
                                 <Route element={<PrivateRoute><AppLayout /></PrivateRoute>}>
                                     <Route path="/" element={<TabContent />} />
                                 </Route>
-
                                 {/* Public routes */}
                                 <Route element={<PublicRoute><AuthLayout /></PublicRoute>}>
                                     <Route path="/auth/callback" element={<AuthCallback />} />
                                     <Route path="/login" element={<Login />} />
                                 </Route>
                                 <Route path="*" element={<Navigate to="/login" replace />} />
-                            
                             </Routes>
                         </SearchProvider>
                     </TabProvider>
                 </AuthProvider>
-            </TooltipProvider>
+            </PanelProvider>
         </HashRouter>
     )
 }

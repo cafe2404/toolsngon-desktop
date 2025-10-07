@@ -1,10 +1,10 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable react-refresh/only-export-components */
 // src/context/TabContext.tsx
 import { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react"
 import { useAuth } from "@contexts/AuthContext"
 import Dashboard from "../routes/pages/Dashboard"
 import { Account } from "src/types/global"
-import Introduction from "../routes/pages/Introduction"
 
 export type Tab = {
   id: string
@@ -19,9 +19,7 @@ export type Tab = {
   canGoForward?: boolean
   component?: React.ComponentType
   account?: Account
-  currentAccountId?: number
   viewReady?: boolean
-  pendingScript?: string | null
 }
 
 export type TabContextType = {
@@ -42,16 +40,14 @@ export type TabContextType = {
   reorderTabs: (dragId: string, hoverId: string) => void
   toggleSplit: () => void
   clearSplit: () => void
-  injectScript: (id: string, script: string) => Promise<boolean>
+  injectScript: (id: string, account: Account) => Promise<boolean>
   getCurrentAccount: (tabId: string) => Account | undefined
-  switchAccount: (tabId: string, accountId: number) => void
 }
 
 const TabContext = createContext<TabContextType | null>(null)
 
 const initialTabs: Tab[] = [
   { id: "1", name: "dashboard", title: "Trang chủ", type: "internal", component: Dashboard, currentUrl: "https://www.toolsngon.com/dashboard/" },
-  { id: "2", name: "introduction", title: "Hướng dẫn sử dụng", type: "internal", component: Introduction, currentUrl: "https://www.toolsngon.com/introdution/" },
 ]
 
 export function TabProvider({ children }: { children: ReactNode }): React.JSX.Element {
@@ -73,7 +69,7 @@ export function TabProvider({ children }: { children: ReactNode }): React.JSX.El
     webviewsRef.current.clear()
     const defaultTabs: Tab[] = initialTabs
     setTabs(defaultTabs)
-    setCurrentTab(defaultTabs[0])
+    setCurrentTab(tabs[0])
     setSplitTabs(null)
   }
 
@@ -136,7 +132,7 @@ export function TabProvider({ children }: { children: ReactNode }): React.JSX.El
       if (!changed) return prevTabs
       const nextTabs = prevTabs.slice()
       nextTabs[index] = merged
-      
+
       if (currentTab.id === id) setCurrentTab(merged)
       return nextTabs
     })
@@ -209,13 +205,12 @@ export function TabProvider({ children }: { children: ReactNode }): React.JSX.El
 
   const clearSplit = (): void => setSplitTabs(null)
 
-  const injectScript = async (id: string, script: string): Promise<boolean> => {
+  const injectScript = async (id: string, account: Account): Promise<boolean> => {
     try {
       console.log(id)
       const tab = tabsRef.current.find(t => t.id === id)
       if (!tab || tab.type !== 'external') return false
-      if (!script || typeof script !== 'string' || script.trim().length === 0) return false
-      // wait for BrowserView to be ready (WebView component will mark viewReady)
+      if (!account.script || typeof account.script !== 'string' || account.script.trim().length === 0) return false
       const waitUntil = async (
         predicate: () => boolean,
         timeoutMs: number = 5000,
@@ -236,8 +231,11 @@ export function TabProvider({ children }: { children: ReactNode }): React.JSX.El
         return Boolean(t?.viewReady)
       })
       if (!ok) return false
-      // @ts-ignore: exposed by preload for BrowserView script injection
-      const result = await window.api?.browserView?.injectScript(id, script)
+      const result = await window.api?.browserView?.injectScript(
+        id,
+        account.script,
+        account.css_text
+      )
       return result === true
     } catch {
       return false
@@ -250,9 +248,7 @@ export function TabProvider({ children }: { children: ReactNode }): React.JSX.El
     return tab.account
   }
 
-  const switchAccount = (tabId: string, accountId: number): void => {
-    updateTab(tabId, { currentAccountId: accountId })
-  }
+
   return (
     <TabContext.Provider value={{
       tabs, setTabs,
@@ -262,7 +258,7 @@ export function TabProvider({ children }: { children: ReactNode }): React.JSX.El
       registerWebview,
       goBack, goForward, reload, stop, reorderTabs,
       toggleSplit, clearSplit, injectScript,
-      getCurrentAccount, switchAccount
+      getCurrentAccount
     }}>
       {children}
     </TabContext.Provider>

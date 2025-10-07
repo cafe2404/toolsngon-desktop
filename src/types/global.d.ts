@@ -3,7 +3,8 @@ export {}
 export type Account = {
   id: number
   name: string
-  script: string
+  script?: string
+  css_text?: string
 }
 export type AccountGroup = {
   id: number

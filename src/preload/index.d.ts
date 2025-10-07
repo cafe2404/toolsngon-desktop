@@ -28,7 +28,7 @@ declare global {
         destroyAll: () => Promise<boolean>
         clearData: () => Promise<boolean>
         destroy: (id: string) => Promise<boolean>
-        injectScript: (id: string, script: string) => Promise<boolean>
+        injectScript: (id: string, script: string, cssText?: string) => Promise<boolean>
       }
     }
     auth: {

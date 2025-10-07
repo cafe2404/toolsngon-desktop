@@ -1,77 +1,130 @@
-import { ChevronDown, Loader2, XIcon } from 'lucide-react';
-import { Reorder } from 'framer-motion'
-import { useTabs } from '../contexts/TabContext';
-import { MouseEvent } from 'react';
+import { Loader2, PanelLeftOpen, PanelRightOpen, XIcon } from "lucide-react";
+import { Reorder, motion } from "framer-motion";
+import { useTabs } from "../contexts/TabContext";
+import { MouseEvent } from "react";
+import { usePanel } from "../contexts/PanelContext";
 
 const Tablist = (): React.JSX.Element => {
-    const { switchTab, tabs, currentTab, closeTab, setTabs } = useTabs()
-
-    const externalTabs = tabs.filter(t => t.type === 'external')
-    const internalTabs = tabs.filter(t => t.type !== 'external')
+    const { switchTab, tabs, currentTab, closeTab, setTabs } = useTabs();
+    const { isOpen, togglePanel } = usePanel();
+    const externalTabs = tabs.filter((t) => t.type === "external");
+    const internalTabs = tabs.filter((t) => t.type !== "external");
 
     const onReorder = (newOrder: typeof externalTabs): void => {
-        const newTabs = [...internalTabs, ...newOrder]
-        setTabs(newTabs)
-    }
+        const newTabs = [...internalTabs, ...newOrder];
+        setTabs(newTabs);
+    };
 
     const onWheelHorizontal = (e: React.WheelEvent<HTMLDivElement>): void => {
-        const el = e.currentTarget
+        const el = e.currentTarget;
         if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-            el.scrollLeft += e.deltaY
+            el.scrollLeft += e.deltaY;
         }
-    }
+    };
+
     const handleMouseDown = (e: MouseEvent, tabId: string): void => {
         if (e.button === 1) {
             e.stopPropagation();
             closeTab(tabId);
         }
     };
+
     return (
-        <div className="h-10 pr-36 flex items-center gap-1.5 pl-1.5">
-            <button className="h-7 w-7 min-w-7 relative z-20 bg-white rounded-lg hover:bg-blue-200 text-slate-800 flex items-center justify-center duration-300">
-                <ChevronDown size={16} />
-            </button>
-            <div className="flex-1 no-scrollbar h-full" onWheel={onWheelHorizontal}>
-                <Reorder.Group layout="position"
+        <motion.div
+            animate={{ width: isOpen ? 224 : 48 }} // 224px = w-56, 44px = w-11
+            transition={{ type: "tween", duration: 0.05, ease: "easeInOut" }}
+            className={`flex flex-col gap-1.5 h-full duration-200 bg-slate-100 border-t border-r border-slate-200`}
+        >
+            {/* 📋 Tiêu đề + nút menu */}
+            <div className={`flex items-center justify-between ${isOpen ? "pr-2 pl-4 " : 'px-2' } py-1.5 mb-1.5 border-b border-l-slate-200`}>
+                <motion.h3
+                    initial={false}
+                    animate={{ opacity: isOpen ? 1 : 0, width: isOpen ? "auto" : 0 }}
+                    className="font-semibold text-sm whitespace-nowrap overflow-hidden"
+                >
+                    Danh sách tab
+                </motion.h3>
+                <button onClick={togglePanel} className='h-8 w-8 min-w-8 rounded-lg hover:bg-slate-300 text-slate-800 flex items-center justify-center duration-300'>
+                    {isOpen ? <PanelRightOpen size={16}></PanelRightOpen> : <PanelLeftOpen size={16}></PanelLeftOpen>}
+                </button>
+            </div>
+
+            {/* 📁 Danh sách tab */}
+            <div className="flex-1 no-scrollbar px-2" onWheel={onWheelHorizontal}>
+                <Reorder.Group
+                    layout="position"
                     transition={{
                         type: "spring",
                         stiffness: 200,
-                        damping: 30
-                    }} axis="x"
+                        damping: 30,
+                    }}
+                    axis="y"
                     values={externalTabs}
                     onReorder={onReorder}
-                    className="flex items-end gap-1.5 h-full">
+                    className="w-full flex flex-col gap-2"
+                >
                     {externalTabs.map((tab) => (
-                        <Reorder.Item value={tab} key={tab.id} onMouseDown={(e) => handleMouseDown(e, tab.id)} className="pt-1.5 h-full relative" onPointerDown={() => switchTab(tab.id)} >
-                            <div className={`h-full rounded-t-lg pb-1.5 relative ${currentTab.id === tab.id && "bg-white"}`} >
-                                <button className={`h-full relative z-1 px-2 flex items-center justify-between rounded-lg gap-4 w-64 ${currentTab.id !== tab.id && "hover:bg-slate-300 duration-150"}`}>
+                        <Reorder.Item
+                            value={tab}
+                            key={tab.id}
+                            onMouseDown={(e) => handleMouseDown(e, tab.id)}
+                            onPointerDown={() => switchTab(tab.id)}
+                            layout
+                            className={`relative ${currentTab.id === tab.id
+                                ? "bg-white shadow"
+                                : "hover:bg-slate-300 duration-150"
+                                } rounded-lg p-2`}
+                        >
+                            <motion.div
+                                layout
+                                whileHover={{ scale: 1.01 }}
+                                whileTap={{ scale: 0.98 }}
+                            >
+                                <div className="h-full relative z-1 flex items-center justify-between rounded-lg gap-4 w-full">
                                     <div className="flex items-center gap-2 text-xs">
                                         {tab.isLoading ? (
                                             <Loader2 className="size-4 min-w-4 animate-spin" />
                                         ) : (
-                                            <img className="size-4 min-w-4 rounded-full object-cover" src={tab.favicon} alt="" />
+                                            <img
+                                                className="size-4 min-w-4 rounded-full object-cover"
+                                                src={tab.favicon}
+                                                alt=""
+                                            />
                                         )}
-                                        <span className="line-clamp-1 text-left">{tab.title}</span>
+                                        <motion.span
+                                            initial={false}
+                                            animate={{
+                                                opacity: isOpen ? 1 : 0,
+                                                width: isOpen ? "auto" : 0,
+                                            }}
+                                            className="line-clamp-1 text-left overflow-hidden"
+                                        >
+                                            {tab.title}
+                                        </motion.span>
                                     </div>
-                                    <div onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }} className="flex items-center justify-center min-w-4 size-4 rounded-full hover:bg-slate-200 duration-300">
+                                    <motion.button
+                                        initial={false}
+                                        animate={{
+                                            opacity: isOpen ? 1 : 0,
+                                            width: isOpen ? "auto" : 0,
+                                        }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            closeTab(tab.id);
+                                        }}
+                                        className="flex items-center justify-center min-w-4 size-4 rounded-full duration-300"
+                                    >
                                         <XIcon size={14} />
-                                    </div>
-                                </button>
-                                <div className='' style={{ display: currentTab.id === tab.id ? "block" : "none" }}>
-                                    <div className="absolute bottom-0 -left-4 w-4 h-4 bg-white overflow-hidden z-0">
-                                        <div className="absolute w-6 h-6 rounded-xl bg-slate-200 -top-2 -left-2"></div>
-                                    </div>
-                                    <div className="absolute bottom-0 -right-4 w-4 h-4 bg-white overflow-hidden z-0">
-                                        <div className="absolute w-6 h-6 rounded-xl bg-slate-200 -top-2 -right-2"></div>
-                                    </div>
+                                    </motion.button>
                                 </div>
-                            </div>
+                            </motion.div>
                         </Reorder.Item>
+
                     ))}
                 </Reorder.Group>
             </div>
-        </div>
+        </motion.div>
     );
-}
+};
 
 export default Tablist;

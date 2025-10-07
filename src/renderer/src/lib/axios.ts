@@ -3,10 +3,7 @@ import Axios, { AxiosRequestHeaders } from 'axios'
 
 const BASE_URL = import.meta.env.VITE_SERVER_URL
 async function getStoredTokens(): Promise<{ access: string | null; refresh: string | null }> {
-  if (typeof window !== 'undefined' && window.auth?.get) {
-    return window.auth.get()
-  }
-  return { access: null, refresh: null }
+  return window.auth.get()
 }
 
 async function setStoredTokens(tokens: {
@@ -68,8 +65,6 @@ api.interceptors.response.use(
     if (!originalRequest || originalRequest._retry) {
       return Promise.reject(error)
     }
-
-    // Only attempt refresh on 401 responses
     if (error.response?.status === 401) {
       if (isRefreshing) {
         const newToken = await subscribeTokenRefresh()
@@ -86,7 +81,13 @@ api.interceptors.response.use(
       try {
         const { refresh } = await getStoredTokens()
         if (!refresh) throw new Error('No refresh token')
-        const refreshRes = await Axios.post(`${BASE_URL}/api/token/refresh/`, { refresh })
+        const device_uuid = await window.os.getDeviceUUID()
+        const appInfo = await window.os.getAppInfo()
+        const refreshRes = await Axios.post(`${BASE_URL}/api/app_auth/refresh/`, {
+          refresh,
+          device_uuid,
+          app_info: appInfo
+        })
         const nextAccess = refreshRes.data.access as string
         await setStoredTokens({ access: nextAccess, refresh })
         onRefreshed(nextAccess)

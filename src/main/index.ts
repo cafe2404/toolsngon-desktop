@@ -12,6 +12,14 @@ let mainWindow
 autoUpdater.on('update-downloaded', () => {
   autoUpdater.quitAndInstall()
 })
+autoUpdater.on('checking-for-update', () => console.log('Checking for update...'))
+autoUpdater.on('update-available', (info) => console.log('Update available:', info))
+autoUpdater.on('update-not-available', (info) => console.log('No update:', info))
+autoUpdater.on('error', (err) => console.error('Update error:', err))
+autoUpdater.on('download-progress', (progress) => console.log('Progress:', progress))
+autoUpdater.on('update-downloaded', (info) => console.log('Downloaded:', info))
+autoUpdater.checkForUpdatesAndNotify()
+
 protocol.registerSchemesAsPrivileged([
   { scheme: 'chrome-extension', privileges: { secure: true, standard: true } }
 ])
@@ -34,7 +42,7 @@ function createWindow(): void {
     titleBarOverlay: {
       color: '#00000000', // màu nền của overlay (navbar)
       symbolColor: '#1e293b', // màu icon minimize/maximize/close
-      height: 40 // chiều cao vùng overlay
+      height: 36 // chiều cao vùng overlay
     },
     visualEffectState: 'active', // auto đổi 'inactive' khi mất focus
     ...(process.platform === 'linux' ? { icon } : {}),
@@ -47,7 +55,6 @@ function createWindow(): void {
   })
 
   mainWindow.on('ready-to-show', () => {
-    // mainWindow.maximize()  // mở app ở trạng thái maximize
     mainWindow.show()
   })
 
@@ -72,8 +79,6 @@ if (!gotTheLock) {
   app.quit()
 } else {
   app.on('second-instance', (_, argv) => {
-    // Windows/Linux: deeplink nằm trong argv
-    autoUpdater.checkForUpdatesAndNotify()
     const url = argv.find((arg) => arg.startsWith('toolsngon://'))
     if (url && mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore()
@@ -85,7 +90,6 @@ if (!gotTheLock) {
   app.whenReady().then(async () => {
     // Set app user model id for windows
     electronApp.setAppUserModelId('com.toolsngon')
-
     app.on('browser-window-created', (_, window) => {
       optimizer.watchWindowShortcuts(window)
     })
@@ -106,8 +110,53 @@ if (!gotTheLock) {
     })
 
     ipcMain.handle('auth:clear', async () => {
-      await clearTokens()
-      return true
+      try {
+        await clearTokens()
+
+        // Collect sessions (main window + all BrowserViews) BEFORE destroying views
+        const sessions = new Set(Array.from(views.values()).map((v) => v.webContents.session))
+        if (mainWindow) sessions.add(mainWindow.webContents.session)
+
+        const clearTasks: Array<Promise<void>> = []
+        for (const s of sessions) {
+          clearTasks.push(s.clearCache())
+          clearTasks.push(
+            s.clearStorageData({
+              storages: [
+                'cookies',
+                'filesystem',
+                'indexdb',
+                'localstorage',
+                'shadercache',
+                'serviceworkers',
+                'cachestorage',
+                'websql'
+              ]
+            })
+          )
+        }
+        await Promise.allSettled(clearTasks)
+
+        // Destroy all views to drop any in-memory state
+        for (const v of views.values()) {
+          try {
+            if (mainWindow?.getBrowserView() === v)
+              mainWindow.setBrowserView(null as unknown as BrowserView)
+          } catch {
+            /* noop */
+          }
+          try {
+            ;(v as unknown as { destroy?: () => void }).destroy?.()
+          } catch {
+            /* noop */
+          }
+        }
+        views.clear()
+
+        return true
+      } catch {
+        return false
+      }
     })
     createWindow()
 
@@ -146,7 +195,13 @@ if (!gotTheLock) {
       if (!view) {
         // Create an isolated persistent session for each tab id
         const partition = `persist:tab-${id}`
-        view = new BrowserView({ webPreferences: { sandbox: false, partition } })
+        view = new BrowserView({
+          webPreferences: {
+            sandbox: false,
+            partition,
+            preload: path.join(__dirname, '../../resources/preload-fake-navigator.js')
+          }
+        })
         views.set(id, view)
         if (extensionPath && url && url.includes('etsy')) {
           console.log(extensionPath)
@@ -357,19 +412,14 @@ if (!gotTheLock) {
       }
       return true
     })
-    ipcMain.handle('bv:inject-script', async (_e, { id, script }) => {
+    ipcMain.handle('bv:inject-script', async (_e, { id, script, cssText }) => {
       const v = getView(id)
       if (!v || !script) {
-        console.log('bv:inject-script: No view or script')
         return false
       }
 
       try {
         const session = v.webContents.session
-
-        // -------------------------
-        // Helper functions trong scope main (sử dụng ctx)
-        // -------------------------
         const fetch2fa = async (twoFactorAuth): Promise<string> => {
           const clean = twoFactorAuth.replace(/\s+/g, '')
           const url = `https://2fa.live/tok/${clean}`
@@ -402,9 +452,12 @@ if (!gotTheLock) {
         }
         const fn = new Function('ctx', `return (async () => { ${script} })()`)
         await fn(ctx)
+        v.webContents.on('did-finish-load', async () => {
+          await v.webContents.insertCSS(cssText)
+        })
         return true
-      } catch (err) {
-        console.error('bv:inject-script: ❌ Error executing script:', err)
+      } catch {
+        /* noop */
         return false
       }
     })

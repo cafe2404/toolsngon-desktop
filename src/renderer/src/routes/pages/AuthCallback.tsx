@@ -15,12 +15,10 @@ export default function AuthCallback() {
     const { loginWithCode } = useAuth()
     const checkAuth = async (): Promise<void> => {
         try {
-            const device_uuid = await window.os.getDeviceUUID()
-            const appInfo = await window.os.getAppInfo()
+
             await loginWithCode({
                 session_id: sessionId!,
-                code: code!, device_uuid,
-                app_info: appInfo
+                code: code!
             })
             navigate('/dashboard')
         }
@@ -33,8 +31,7 @@ export default function AuthCallback() {
                     label: "Dismiss",
                     onClick: () => toast.dismiss(toastId),
                 },
-            }
-            )
+            })
             navigate('/login')
         }
     }

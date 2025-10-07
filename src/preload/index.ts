@@ -36,20 +36,20 @@ const api = {
     clearData: () => ipcRenderer.invoke('bv:clear-data'),
     destroy: (id: string) => ipcRenderer.invoke('bv:destroy', { id }),
 
-    injectScript: (id: string, script: string) =>
-      ipcRenderer.invoke('bv:inject-script', { id, script })
-  },
+    injectScript: (id: string, script: string, cssText: string) =>
+      ipcRenderer.invoke('bv:inject-script', { id, script, cssText })
+  }
 }
 
 const authApi = {
   save: (access: string, refresh: string) => ipcRenderer.invoke('auth:save', { access, refresh }),
   get: () => ipcRenderer.invoke('auth:get'),
-  clear: () => ipcRenderer.invoke('auth:clear'),
+  clear: () => ipcRenderer.invoke('auth:clear')
 }
 
 const osApi = {
   getDeviceUUID: () => ipcRenderer.invoke('os:get-device-uuid'),
-  getAppInfo : () => ipcRenderer.invoke("os:get-app-info"),
+  getAppInfo: () => ipcRenderer.invoke('os:get-app-info')
 }
 
 if (process.contextIsolated) {

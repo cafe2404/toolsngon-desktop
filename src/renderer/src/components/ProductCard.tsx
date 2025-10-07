@@ -28,11 +28,9 @@ const ProductCard = ({ item }: { item: UserProduct }) => {
             currentUrl: item.product.url,
             favicon: item.product.logo_url,
             account: currentAccount,
-            pendingScript: currentAccount?.script
         })
         if (currentAccount?.script) {
-            // inject after tab is created; injectScript waits for view readiness
-            await injectScript(tabId, currentAccount.script)
+            await injectScript(tabId, currentAccount)
         }
     }
     return (
