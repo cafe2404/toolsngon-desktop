@@ -5,7 +5,7 @@ on:
     branches:
       - main
     tags:
-      - 'v*.*.*' # Chạy khi push tag
+      - 'v*.*.*'
 
 jobs:
   build-macos:
@@ -25,15 +25,21 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # ✅ Rebuild native modules như keytar cho kiến trúc universal
-      - name: Rebuild native modules
-        run: npx electron-rebuild --arch=universal --force
+      # 🐍 Cài Python & distutils để hỗ trợ node-gyp build native modules (VD: keytar)
+      - name: Install Python and setuptools
+        run: |
+          brew install python@3.11
+          python3 -m pip install --upgrade pip setuptools wheel
 
-      # ✅ Build universal DMG
-      - name: Build Electron app
+      # 🔧 Rebuild native modules để tương thích với Electron
+      - name: Rebuild native modules
+        run: npx electron-rebuild --force
+
+      # 🛠️ Build Universal DMG
+      - name: Build Electron app (Universal)
         run: npm run publish:mac
 
-      # 📦 Upload file DMG để tải về
+      # 📦 Upload artifact để tải về sau khi build
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v4
         with:
