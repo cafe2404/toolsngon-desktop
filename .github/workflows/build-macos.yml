@@ -5,7 +5,7 @@ on:
     branches:
       - main
     tags:
-      - 'v*.*.*'  # Chỉ chạy khi push tag
+      - 'v*.*.*' # Chỉ chạy khi push tag
 
 jobs:
   build-macos:
@@ -21,8 +21,9 @@ jobs:
 
       - name: Install dependencies
         run: npm install
-
       - name: Build Electron app
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           npm run publish:mac
           npx electron-builder --mac --publish never
