@@ -24,13 +24,6 @@ jobs:
       - name: Install JavaScript dependencies
         # Install all dependencies normally
         run: npm install
-        
-      # --- FIX for keytar universal build starts here ---
-      - name: Rebuild native dependencies (Fixes 'keytar' issue)
-        # This step forces native modules like keytar to be compiled for the target Electron version and architecture(s).
-        # This is essential for the --universal flag to succeed.
-        run: npx electron-builder install-app-deps
-      # --- FIX for keytar universal build ends here ---
 
       - name: Build and Publish Electron app
         # The 'publish:mac' script handles the final packaging with --mac --universal
