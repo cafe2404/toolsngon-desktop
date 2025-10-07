@@ -5,15 +5,17 @@ on:
     branches:
       - main
     tags:
-      - 'v*.*.*' # Chỉ chạy khi push tag
+      - 'v*.*.*' # Chạy khi push tag
 
 jobs:
   build-macos:
     runs-on: macos-latest
     env:
-        GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout source code
+        uses: actions/checkout@v3
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -22,11 +24,16 @@ jobs:
 
       - name: Install dependencies
         run: npm install
-      - name: Build Electron app
-   
-        run: |
-          npm run publish:mac
 
+      # ✅ Rebuild native modules như keytar cho kiến trúc universal
+      - name: Rebuild native modules
+        run: npx electron-rebuild --arch=universal --force
+
+      # ✅ Build universal DMG
+      - name: Build Electron app
+        run: npm run publish:mac
+
+      # 📦 Upload file DMG để tải về
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v4
         with:
