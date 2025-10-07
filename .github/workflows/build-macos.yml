@@ -23,9 +23,10 @@ jobs:
       - name: Build Electron app
         run: |
           npm run publish:mac
+          npx electron-builder --mac --publish never
 
       - name: Upload DMG artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: macos-dmg
           path: dist/*.dmg
