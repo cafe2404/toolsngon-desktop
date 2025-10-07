@@ -31,7 +31,6 @@ mac:
   notarize: false
 dmg:
   artifactName: ${name}.${ext}
-  compression: maximum 
 linux:
   target:
     - AppImage
