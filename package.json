@@ -1,6 +1,6 @@
 {
   "name": "toolsngon",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "An account sharing app made for you",
   "main": "./out/main/index.js",
   "author": "cafedev24@gmail.com",
