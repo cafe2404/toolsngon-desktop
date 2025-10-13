@@ -14,8 +14,8 @@
     "start": "electron-vite preview",
     "dev": "electron-vite dev",
     "postinstall": "electron-builder install-app-deps",
-    "build:mac": "electron-vite build && electron-builder --mac",
-    "publish:mac": "npm run build && electron-builder --mac --universal --publish always"
+    "build": "electron-vite build && electron-builder --mac",
+    "publish": "npm run build && electron-builder --mac --universal --publish always"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
