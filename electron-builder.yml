@@ -11,8 +11,6 @@ files:
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
 asarUnpack:
   - resources/**
-win:
-  executableName: toolsngon
 nsis:
   artifactName: ${name}-setup.${ext}
   shortcutName: ${productName}
@@ -28,18 +26,11 @@ mac:
   notarize: false
 dmg:
   artifactName: ${name}.${ext}
-linux:
-  target:
-    - AppImage
-    - snap
-    - deb
-  maintainer: electronjs.org
-  category: Utility
 appImage:
   artifactName: ${name}.${ext}
 npmRebuild: false
 publish:
   provider: github
   owner: cafe2404
-  repo: toolsngon-releases
+  repo: toolsngon-releases-mac
   releaseType: release
