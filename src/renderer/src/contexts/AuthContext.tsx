@@ -104,7 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
             await clearAuth()
             await window.api?.browserView?.destroyAll?.()
-            await window.api?.browserView?.clearData?.()
+            await window.api?.browserView?.clearAllData?.()
         } catch {
             // noop
         }
@@ -153,7 +153,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                             const toastId = toast.error('Phiên đăng nhập không tồn tại', {
                                 duration: Infinity,
                                 action: {
-                                    label: "Dismiss",
+                                    label: "Đóng",
                                     onClick: () => toast.dismiss(toastId),
                                 },
                             })
@@ -163,7 +163,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                             const toastId = toast.error('Phiên đăng nhập của bạn đã hết hạn', {
                                 duration: Infinity,
                                 action: {
-                                    label: "Dismiss",
+                                    label: "Đóng",
                                     onClick: () => toast.dismiss(toastId),
                                 },
                             })
@@ -202,7 +202,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const toastId = toast.error('Phiên đăng nhập của bạn đã hết hạn', {
                     duration: Infinity,
                     action: {
-                        label: "Dismiss",
+                        label: "Đóng",
                         onClick: () => toast.dismiss(toastId),
                     },
                 })

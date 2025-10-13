@@ -1,4 +1,5 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
+import { Account } from '../types/global'
 
 declare global {
   interface Window {
@@ -13,8 +14,14 @@ declare global {
         attach: (
           id: string,
           url?: string,
+          account?: Account,
           bounds?: { x: number; y: number; width: number; height: number },
           activate?: boolean
+        ) => Promise<boolean>
+        openChrome: (
+          id: string,
+          url?: string,
+          account?: Account,
         ) => Promise<boolean>
         setBounds: (
           id: string,
@@ -26,9 +33,9 @@ declare global {
         reload: (id: string) => Promise<boolean>
         stop: (id: string) => Promise<boolean>
         destroyAll: () => Promise<boolean>
-        clearData: () => Promise<boolean>
+        clearAllData: () => Promise<boolean>
         destroy: (id: string) => Promise<boolean>
-        injectScript: (id: string, script: string, cssText?: string) => Promise<boolean>
+        injectScript: (id: string, script: string) => Promise<boolean>
       }
     }
     auth: {

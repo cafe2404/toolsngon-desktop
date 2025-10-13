@@ -13,8 +13,8 @@ export default function Sidebar(): JSX.Element {
             name: 'introdution',
             title: 'Hướng dẫn',
             type: 'external',
-            url: 'https://toolsngon.com/introdution',
-            currentUrl: 'https://toolsngon.com/introdution',
+            url: 'https://toolsngon.com/page/introduction',
+            currentUrl: 'https://toolsngon.com/page/introduction',
         })
     }
     return (

@@ -5,7 +5,6 @@ export default function WebView({ tab }: { tab: Tab }): React.JSX.Element {
     const containerRef = useRef<HTMLDivElement>(null)
     const { currentTab, updateTab } = useTabs()
 
-    // Attach a BrowserView for this tab on mount and manage its bounds
     useLayoutEffect((): () => void => {
         const id = tab.id
         const initialUrl = tab.url
@@ -20,10 +19,13 @@ export default function WebView({ tab }: { tab: Tab }): React.JSX.Element {
                 height: Math.floor(rect.height),
             }
         }
-        window.api?.browserView?.attach(id, initialUrl, calcBounds(), false)
+        window.api?.browserView?.attach(
+            id, initialUrl,
+            tab.account,
+            calcBounds(),
+            false
+        )
         updateTab(id, { viewReady: true })
-        // No injection here; handled by the caller after tab creation
-
         const onResize = (): void => {
             // @ts-ignore: exposed by preload (api.browserView.setBounds)
             window.api?.browserView?.setBounds(id, calcBounds())
@@ -48,7 +50,7 @@ export default function WebView({ tab }: { tab: Tab }): React.JSX.Element {
             if (ro) ro.disconnect()
             // @ts-ignore: exposed by preload (api.browserView.destroy)
             window.api?.browserView?.destroy(id)
-            updateTab(id, { viewReady: false})
+            updateTab(id, { viewReady: false })
             if (typeof unsubscribe === 'function') unsubscribe()
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -73,7 +75,13 @@ export default function WebView({ tab }: { tab: Tab }): React.JSX.Element {
         // Double-check current tab right before attach to avoid races
         if (currentTab.id === id) {
             // @ts-ignore: exposed by preload (api.browserView.attach)
-            window.api?.browserView?.attach(id, undefined, calcBounds(), true)
+            window.api?.browserView?.attach(
+                id,
+                undefined,
+                undefined,
+                calcBounds(),
+                true
+            )
             // @ts-ignore: exposed by preload (api.browserView.setBounds)
             window.api?.browserView?.setBounds(id, calcBounds())
         }

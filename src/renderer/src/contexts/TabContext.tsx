@@ -40,7 +40,7 @@ export type TabContextType = {
   reorderTabs: (dragId: string, hoverId: string) => void
   toggleSplit: () => void
   clearSplit: () => void
-  injectScript: (id: string, account: Account) => Promise<boolean>
+  injectScript: (id: string, script: Account) => Promise<boolean>
   getCurrentAccount: (tabId: string) => Account | undefined
 }
 
@@ -58,13 +58,10 @@ export function TabProvider({ children }: { children: ReactNode }): React.JSX.El
   const webviewsRef = useRef<Map<string, Electron.WebviewTag>>(new Map())
   const { isAuthenticated } = useAuth()
 
-  const resetTabs = (): void => {
-    // Destroy all BrowserViews and clear data (best effort; AuthContext also calls this)
+  const clearAllData = (): void => {
     try {
-      // @ts-ignore: exposed by preload
       window.api?.browserView?.destroyAll?.()
-      // @ts-ignore: exposed by preload
-      window.api?.browserView?.clearData?.()
+      window.api?.browserView?.clearAllData?.()
     } catch { /* noop */ }
     webviewsRef.current.clear()
     const defaultTabs: Tab[] = initialTabs
@@ -75,7 +72,7 @@ export function TabProvider({ children }: { children: ReactNode }): React.JSX.El
 
   useEffect(() => {
     if (!isAuthenticated) {
-      resetTabs()
+      clearAllData()
     }
   }, [isAuthenticated])
 
@@ -233,8 +230,7 @@ export function TabProvider({ children }: { children: ReactNode }): React.JSX.El
       if (!ok) return false
       const result = await window.api?.browserView?.injectScript(
         id,
-        account.script,
-        account.css_text
+        account.script
       )
       return result === true
     } catch {

@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import { Account } from '../types/global'
 
 const api = {
   onDeepLink: (callback: (url: string) => void): (() => void) => {
@@ -22,9 +23,12 @@ const api = {
     attach: (
       id: string,
       url?: string,
+      account?: Account,
       bounds?: { x: number; y: number; width: number; height: number },
       activate: boolean = true
-    ) => ipcRenderer.invoke('bv:attach', { id, url, bounds, activate }),
+    ) => ipcRenderer.invoke('bv:attach', { id, url, account, bounds, activate }),
+    openChrome: (id: string, url?: string, account?: Account) =>
+      ipcRenderer.invoke('bv:open-chrome', { id, url, account }),
     setBounds: (id: string, bounds: { x: number; y: number; width: number; height: number }) =>
       ipcRenderer.invoke('bv:set-bounds', { id, bounds }),
     navigate: (id: string, url: string) => ipcRenderer.invoke('bv:navigate', { id, url }),
@@ -33,11 +37,10 @@ const api = {
     reload: (id: string) => ipcRenderer.invoke('bv:reload', { id }),
     stop: (id: string) => ipcRenderer.invoke('bv:stop', { id }),
     destroyAll: () => ipcRenderer.invoke('bv:destroy-all'),
-    clearData: () => ipcRenderer.invoke('bv:clear-data'),
+    clearAllData: () => ipcRenderer.invoke('bv:clear-all-data'),
     destroy: (id: string) => ipcRenderer.invoke('bv:destroy', { id }),
-
-    injectScript: (id: string, script: string, cssText: string) =>
-      ipcRenderer.invoke('bv:inject-script', { id, script, cssText })
+    injectScript: (id: string, script: string) =>
+      ipcRenderer.invoke('bv:inject-script', { id, script })
   }
 }
 

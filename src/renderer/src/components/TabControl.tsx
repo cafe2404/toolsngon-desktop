@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 
-import { ArrowLeft, ArrowRight, RotateCw, XIcon, ScanFace, LayoutGrid, Store, LogOut, CircleQuestionMark } from "lucide-react"
+import { ArrowLeft, ArrowRight, RotateCw, XIcon, ScanFace, LayoutGrid, Store, LogOut, CircleQuestionMark, Home } from "lucide-react"
 import { useTabs } from "@contexts/TabContext"
 import { useAuth } from "../contexts/AuthContext"
 
@@ -9,22 +9,27 @@ const TabControl = () => {
   const { loadUserProducts, user, logout } = useAuth()
   const handleReloadTab = async () => {
     if (currentTab.id === '1') {
-      console.log(currentTab.id)
       await loadUserProducts()
       return
     }
     await reload(currentTab.id)
   }
   const handleInjectScript = async () => {
-
-    if (currentTab?.account?.script) {
+    if (currentTab?.account) {
       injectScript(currentTab.id, currentTab?.account)
     }
   }
+  const handleOpenExternalUrl = (url: string) => {
+    window.api?.browserView?.navigate(currentTab.id, url)
+  }
+  const handleOpenHome = () => {
+    if (!currentTab?.url) return
+    window.api?.browserView?.navigate(currentTab.id, currentTab?.url)
+  }
   return (
     <div className=' w-full flex-col flex pb-1.5 bg-white'>
-      <div className='flex gap-1.5 flex-col w-full pl-2 pr-3.5 bg-white' >
-        <div className="w-full flex items-center gap-2">
+      <div className='flex gap-1.5 flex-col w-full  bg-white'>
+        <div className="w-full flex items-center gap-2 pl-2 pr-3.5">
           <div className="flex items-center gap-1">
             <button onClick={() => goBack(currentTab.id)} disabled={!currentTab.canGoBack} className={`h-8 w-8 min-w-8 rounded-lg text-slate-800 flex items-center justify-center duration-300 ${currentTab.canGoBack ? 'hover:bg-slate-200' : 'opacity-50 cursor-not-allowed'}`}>
               <ArrowLeft size={16}></ArrowLeft>
@@ -58,11 +63,11 @@ const TabControl = () => {
           <button onClick={async () => {
             await addTab({
               id: "2",
-              name: 'introdution',
+              name: 'introduction',
               title: 'Hướng dẫn',
               type: 'external',
-              url: 'https://toolsngon.com/introdution',
-              currentUrl: 'https://toolsngon.com/introdution',
+              url: 'https://toolsngon.com/page/introduction',
+              currentUrl: 'https://toolsngon.com/page/introduction',
             })
           }} className={`h-8 w-8 min-w-8 rounded-lg text-slate-800 flex items-center justify-center duration-300 ${currentTab.id === '2' ? 'bg-slate-200' : 'hover:bg-slate-200'}`}>
             <CircleQuestionMark size={16}></CircleQuestionMark>
@@ -79,6 +84,20 @@ const TabControl = () => {
             </div>
           </a>
         </div>
+        {
+          currentTab.account?.external_urls && currentTab.account?.external_urls?.length > 0 &&
+          <div className="flex items-center gap-1 flex-wrap border-t border-slate-200 pt-1.5 px-2" >
+            <button onClick={handleOpenHome} className={`w-8 flex items-center justify-center`}>
+              <Home size={16}></Home>
+            </button>
+            <div className="h-5 w-0.5 bg-slate-200"></div>
+            {currentTab.account?.external_urls?.map((url) => (
+              <button key={url.url} onClick={() => handleOpenExternalUrl(url.url)} className={`px-2 h-6 gap-1 rounded-lg text-slate-800 flex items-center justify-center duration-300 hover:bg-slate-200`}>
+                <span className="text-xs">{url.name}</span>
+              </button>
+            ))}
+          </div>
+        }
       </div>
     </div>
   )

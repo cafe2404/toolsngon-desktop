@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { ArrowRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { api } from '@renderer/lib/axios'
 import { useAuth } from '@contexts/AuthContext'
+import { toast } from 'sonner'
 
 export default function Login() {
     const navigate = useNavigate()
@@ -19,9 +21,21 @@ export default function Login() {
             const session_id = res.data.session_id
             window.api.openExternal(`${import.meta.env.VITE_SERVER_URL}/app_auth/${session_id}/grant/?desktop_protocol=toolsngon`)
         }
-        catch {
-            console.log("err")
+        catch (err: any) {
+            const errorMsg = err?.response?.data?.detail || err?.response?.data?.message || "Lỗi không xác định"
+            console.log("err", errorMsg)
+            const toastId = toast.error(errorMsg, {
+                duration: Infinity,
+                action: {
+                    label: "Đóng",
+                    onClick: () => toast.dismiss(toastId),
+                },
+            })
             setLoading(false)
+            alert(
+                '❌ Network Error:\n' +
+                JSON.stringify(err.toJSON(), null, 2)
+            )
         }
     }
     useEffect(() => {
@@ -30,6 +44,7 @@ export default function Login() {
             console.log(parsed)
             navigate("/auth/callback" + parsed.search)
             console.log("Renderer nhận deeplink:", url)
+            setLoading(false)
         })
         return () => { try { (unsubscribe as unknown as (() => void) | undefined)?.() } catch { /* noop */ } }
     }, [navigate])
@@ -43,7 +58,7 @@ export default function Login() {
                         và hoàn tất đăng nhập
                     </h1>
                     <div className="flex items-center gap-1 text-xs">
-                        <p className='text-slate-600'>Không thấy tab trình duyệt? <button onClick={()=>setLoading(false)} className='hover:underline text-blue-600'>Thử lại</button></p>
+                        <p className='text-slate-600'>Không thấy tab trình duyệt? <button onClick={() => setLoading(false)} className='hover:underline text-blue-600'>Thử lại</button></p>
                     </div>
                 </>
                 :

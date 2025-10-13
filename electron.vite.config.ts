@@ -8,6 +8,14 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()]
   },
   preload: {
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve(__dirname, 'src/preload/index.ts'), // nếu có
+          device: resolve(__dirname, 'src/preload/device-preload.ts')
+        }
+      }
+    },
     plugins: [externalizeDepsPlugin()]
   },
   renderer: {
@@ -16,7 +24,7 @@ export default defineConfig({
         '@renderer': resolve('src/renderer/src'),
         '@components': resolve('src/renderer/src/components'),
         '@routes': resolve('src/renderer/src/routes'),
-        '@contexts': resolve('src/renderer/src/contexts'),
+        '@contexts': resolve('src/renderer/src/contexts')
       }
     },
     plugins: [react(), tailwindcss()]

@@ -1,11 +1,45 @@
+import { Cookie } from 'electron'
+
 export {}
+
+export type Device = {
+  id: number
+  user_agent?: string
+  screen_resolution?: string
+  language?: string
+  timezone?: string
+  platform?: string
+  ip_address?: string
+  location?: string
+  hardware_concurrency?: number
+  device_memory?: number
+  first_seen?: string
+  last_seen?: string
+  is_active?: boolean
+}
+
+export type Extension = {
+  id: number
+  extension_id: string
+  name: string
+  zip_file: string
+  created_at: string
+  updated_at: string
+}
 
 export type Account = {
   id: number
   name: string
+  cookies: Cookie[]
+  local_storages: { key: string; value: string }[]
   script?: string
   css_text?: string
+  device?: Device
+  extensions?: Extension[]
+  external_urls?: { name: string; url: string }[]
+  open_chrome?: boolean
 }
+
 export type AccountGroup = {
   id: number
   name: string

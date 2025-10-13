@@ -1,4 +1,15 @@
-import { app, shell, BrowserWindow, ipcMain, BrowserView, Menu, protocol } from 'electron'
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
+import {
+  app,
+  shell,
+  BrowserWindow,
+  ipcMain,
+  BrowserView,
+  Menu,
+  protocol,
+  clipboard,
+  dialog
+} from 'electron'
 import path, { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -6,18 +17,19 @@ import { saveTokens, getAccessToken, getRefreshToken, clearTokens } from './auth
 import { machineIdSync } from 'node-machine-id'
 import { autoUpdater } from 'electron-updater'
 import os from 'os'
+import { prepareExtension } from './utils'
+import { Account } from '../types/global'
+import launchChrome from './openChrome'
+import * as ChromeLauncher from 'chrome-launcher'
+import fs from 'fs-extra' // hoặc 'fs' bình thường nhưng fs-extra tiện hơn
+import https from 'https'
+import http from 'http'
 
 let mainWindow
 
 autoUpdater.on('update-downloaded', () => {
   autoUpdater.quitAndInstall()
 })
-autoUpdater.on('checking-for-update', () => console.log('Checking for update...'))
-autoUpdater.on('update-available', (info) => console.log('Update available:', info))
-autoUpdater.on('update-not-available', (info) => console.log('No update:', info))
-autoUpdater.on('error', (err) => console.error('Update error:', err))
-autoUpdater.on('download-progress', (progress) => console.log('Progress:', progress))
-autoUpdater.on('update-downloaded', (info) => console.log('Downloaded:', info))
 autoUpdater.checkForUpdatesAndNotify()
 
 protocol.registerSchemesAsPrivileged([
@@ -36,6 +48,7 @@ function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 950,
+    minWidth: 700,
     show: false,
     autoHideMenuBar: true,
     titleBarStyle: 'hidden', // hoặc 'hiddenInset' trên macOS
@@ -137,7 +150,6 @@ if (!gotTheLock) {
         }
         await Promise.allSettled(clearTasks)
 
-        // Destroy all views to drop any in-memory state
         for (const v of views.values()) {
           try {
             if (mainWindow?.getBrowserView() === v)
@@ -160,20 +172,6 @@ if (!gotTheLock) {
     })
     createWindow()
 
-    // Load chromium extension path if present (used for per-tab sessions too)
-    let extensionPath: string | null = null
-    if (is.dev) {
-      // 🛠️ Dev mode: load từ source
-      extensionPath = path.resolve(__dirname, '../../extension/clcfeejalfmjdkkmkcnmkggajcjhncad')
-    } else {
-      // 📦 Prod: load từ thư mục unpacked
-      extensionPath = path.join(
-        process.resourcesPath,
-        'extension',
-        'clcfeejalfmjdkkmkcnmkggajcjhncad'
-      )
-    }
-
     // BrowserView manager
     const views = new Map<string, BrowserView>()
     const getView = (id: string): BrowserView | undefined => views.get(id)
@@ -189,32 +187,107 @@ if (!gotTheLock) {
     const attachView = async (
       id: string,
       url?: string,
+      account?: Account,
       activate: boolean = true
     ): Promise<BrowserView | undefined> => {
       let view = views.get(id)
       if (!view) {
-        // Create an isolated persistent session for each tab id
         const partition = `persist:tab-${id}`
+        // Chuyển object thành mảng các chuỗi --key=value
+        let additionalArguments
+        if (account?.device) {
+          const device = account?.device
+          additionalArguments = [
+            `--screenResolution=${device.screen_resolution}`,
+            `--language=${device.language}`,
+            `--timezone=${device.timezone}`,
+            `--platform=${device.platform}`,
+            `--hardwareConcurrency=${device.hardware_concurrency}`,
+            `--deviceMemory=${device.device_memory}`
+          ]
+        } else {
+          additionalArguments = null
+        }
         view = new BrowserView({
           webPreferences: {
             sandbox: false,
             partition,
-            preload: path.join(__dirname, '../../resources/preload-fake-navigator.js')
+            additionalArguments: additionalArguments,
+            preload: join(__dirname, '../preload/device.js')
           }
         })
         views.set(id, view)
-        if (extensionPath && url && url.includes('etsy')) {
-          console.log(extensionPath)
-          try {
-            await view.webContents.session.extensions
-              .loadExtension(extensionPath, { allowFileAccess: true })
-              .catch(() => {
-                /* noop */
+        const session = view.webContents.session
+        if (account?.device?.ip_address) {
+          // Ví dụ: "http://gbpTxemouE:u0CxVMNM4aob777041@103.161.179.43:49697"
+          const proxy = account.device.ip_address.trim()
+
+          const match = proxy.match(/^(https?):\/\/(?:(.+?):(.+?)@)?(.+?):(\d+)$/)
+          if (!match) {
+            console.error('❌ Proxy format invalid:', proxy)
+          } else {
+            const [, protocol, username, password, host, port] = match
+
+            // Set proxy
+            await view.webContents.session.setProxy({
+              proxyRules: `${protocol}://${host}:${port}`
+            })
+
+            // Handle auth nếu có user/pass
+            if (username && password) {
+              view.webContents.on('login', (event, _request, authInfo, callback) => {
+                if (authInfo.isProxy) {
+                  event.preventDefault()
+                  callback(username, password)
+                }
               })
-          } catch {
-            /* noop */
+            }
+
+            console.log(`✅ Proxy set: ${host}:${port}`)
           }
         }
+        if (account?.cookies) {
+          await Promise.all(
+            account?.cookies.map((c) => {
+              const isHost = c.name.startsWith('__Host-')
+              const isSecurePrefix = c.name.startsWith('__Secure-')
+              const cookieObj: Electron.CookiesSetDetails = {
+                url: `${c.secure || isHost || isSecurePrefix ? 'https' : 'http'}://${(c.domain ?? '').replace(/^\./, '')}${c.path || '/'}`,
+                name: c.name,
+                value: c.value,
+                path: isHost ? '/' : c.path || '/',
+                secure: isHost || isSecurePrefix ? true : c.secure || false,
+                httpOnly: c.httpOnly || false,
+                expirationDate: c.expirationDate
+              }
+              // Chỉ set domain nếu không phải __Host-
+              if (!isHost && c.domain) {
+                // @ts-ignore: Electron typings không có domain, nhưng runtime support
+                cookieObj.domain = c.domain
+              }
+              session.cookies
+                .set(cookieObj)
+                .catch((err) => console.error('Set cookie fail', c.name, err))
+            })
+          )
+        }
+        if (account?.device?.user_agent) {
+          await view.webContents.setUserAgent(account.device.user_agent)
+        }
+        if (account?.extensions) {
+          for (const ext of account.extensions) {
+            try {
+              const extensionPath = await prepareExtension(ext.zip_file, ext.extension_id)
+              console.log('extension', extensionPath)
+              await view.webContents.session.extensions.loadExtension(extensionPath, {
+                allowFileAccess: true
+              })
+            } catch (err) {
+              console.error(`⚠️ Failed to load extension ${ext.name}:`, err)
+            }
+          }
+        }
+        console.log(view.webContents.session.extensions.getAllExtensions())
         view.webContents.setWindowOpenHandler(({ url }) => {
           // open in same view
           try {
@@ -258,6 +331,9 @@ if (!gotTheLock) {
             .catch(() => {
               /* noop */
             })
+          if (account?.css_text) {
+            view?.webContents.insertCSS(account?.css_text)
+          }
         })
         view.webContents.on('page-title-updated', () =>
           sendUpdate({ title: view!.webContents.getTitle() })
@@ -276,36 +352,126 @@ if (!gotTheLock) {
             canGoForward: view!.webContents.navigationHistory.canGoForward()
           })
         )
-        if (is.dev) {
-          view.webContents.on('context-menu', (_, params) => {
-            const menu = Menu.buildFromTemplate([
-              {
-                label: 'Inspect Element',
-                click: () => {
-                  view!.webContents.inspectElement(params.x, params.y)
-                }
-              },
-              {
-                label: 'Toggle DevTools',
-                click: () => {
-                  if (view!.webContents.isDevToolsOpened()) {
-                    view!.webContents.closeDevTools()
-                  } else {
-                    view!.webContents.openDevTools({ mode: 'detach' })
-                  }
+        view.webContents.on('did-fail-load', (_, errorCode, errorDescription) => {
+          console.log('Load failed:', errorCode, errorDescription)
+        })
+        const createMenuItem = (_, params) => {
+          const menuItems = [
+            {
+              label: 'Sao chép văn bản',
+              click: () => {
+                if (params.selectionText) {
+                  clipboard.writeText(params.selectionText)
                 }
               }
-            ])
-            menu.popup()
-          })
+            },
+            {
+              label: 'Sao chép hình ảnh',
+              click: () => {
+                if (params.srcURL) {
+                  clipboard.writeImage(params.srcURL)
+                }
+              },
+              visible: params.hasImageContents
+            },
+            {
+              label: 'Tải xuống hình ảnh',
+              click: async () => {
+                if (params.srcURL) {
+                  try {
+                    const result = await dialog.showSaveDialog(mainWindow, {
+                      defaultPath: `image-${Date.now()}.png`,
+                      filters: [
+                        { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] }
+                      ]
+                    })
+
+                    if (!result.canceled && result.filePath) {
+                      const protocol = params.srcURL.startsWith('https:') ? https : http
+                      const file = fs.createWriteStream(result.filePath)
+
+                      protocol
+                        .get(params.srcURL, (response) => {
+                          response.pipe(file)
+                          file.on('finish', () => {
+                            file.close()
+                          })
+                        })
+                        .on('error', (err) => {
+                          fs.unlink(result.filePath, () => {}) // Delete the file async
+                          console.error('Download failed:', err)
+                        })
+                    }
+                  } catch (error) {
+                    console.error('Download error:', error)
+                  }
+                }
+              },
+              visible: params.hasImageContents
+            },
+            {
+              label: 'Sao chép liên kết',
+              click: () => {
+                if (params.linkURL) {
+                  clipboard.writeText(params.linkURL)
+                }
+              },
+              visible: !!params.linkURL
+            },
+            {
+              label: 'Mở liên kết trong trình duyệt',
+              click: () => {
+                if (params.linkURL) {
+                  shell.openExternal(params.linkURL)
+                }
+              },
+              visible: !!params.linkURL
+            }
+          ]
+          if (is.dev) {
+            menuItems.push({
+              label: 'Toggle DevTools',
+              click: () => {
+                if (view!.webContents.isDevToolsOpened()) {
+                  view!.webContents.closeDevTools()
+                } else {
+                  view!.webContents.openDevTools({ mode: 'detach' })
+                }
+              }
+            })
+          }
+          return menuItems
         }
+        view.webContents.on('context-menu', (_, params) => {
+          const menu = Menu.buildFromTemplate(createMenuItem(_, params))
+          menu.popup()
+        })
       }
       if (url) {
-        try {
-          view.webContents.loadURL(url)
-        } catch {
-          /* noop */
+        await view.webContents.loadURL(url)
+        const screenResolution = account && account.device && account.device.screen_resolution
+        if (screenResolution) {
+          const [width, height] = screenResolution.split('x').map(Number)
+          await view.webContents.enableDeviceEmulation({
+            screenPosition: 'desktop', // hoặc 'desktop' tùy nhu cầu giả lập
+            screenSize: { width, height },
+            viewPosition: { x: 0, y: 0 },
+            viewSize: { width, height },
+            deviceScaleFactor: 1, // device pixel ratio, có thể điều chỉnh
+            scale: 1 // zoom scale
+          })
         }
+        if (account?.local_storages) {
+          const data = JSON.stringify(account.local_storages)
+          await view?.webContents.executeJavaScript(`
+            const lsData = ${data};
+            for (const [key, value] of Object.entries(lsData)) {
+              localStorage.setItem(key, value);
+            }
+            console.log('✅ LocalStorage injected');
+          `)
+        }
+        await view.webContents.reload()
       }
       if (activate) {
         mainWindow?.setBrowserView(view)
@@ -314,12 +480,16 @@ if (!gotTheLock) {
       return view
     }
 
-    ipcMain.handle('bv:attach', async (_e, { id, url, bounds, activate }) => {
-      const view = await attachView(id, url, activate)
+    ipcMain.handle('bv:attach', async (_e, { id, url, account, bounds, activate }) => {
+      const view = await attachView(id, url, account, activate)
       if (view && bounds) {
         view.setBounds(computeBounds(bounds))
       }
       return true
+    })
+
+    ipcMain.handle('bv:open-chrome', async (_e, { id, url, account }) => {
+      return await launchChrome({ id, url, account })
     })
     ipcMain.handle('bv:set-bounds', (_e, { id, bounds }) => {
       const v = getView(id)
@@ -384,35 +554,27 @@ if (!gotTheLock) {
       views.clear()
       return true
     })
-    ipcMain.handle('bv:clear-data', async () => {
+    ipcMain.handle('bv:clear-all-data', async () => {
       try {
-        const sessions = new Set(Array.from(views.values()).map((v) => v.webContents.session))
-        if (mainWindow) sessions.add(mainWindow.webContents.session)
-        const tasks: Array<Promise<void>> = []
-        for (const s of sessions) {
-          tasks.push(s.clearCache())
-          tasks.push(
-            s.clearStorageData({
-              storages: [
-                'cookies',
-                'filesystem',
-                'indexdb',
-                'localstorage',
-                'shadercache',
-                'serviceworkers',
-                'cachestorage',
-                'websql'
-              ]
-            })
-          )
+        await ChromeLauncher.killAll()
+        const userDataDir = join(app.getPath('userData'), 'chrome-profile')
+        if (fs.existsSync(userDataDir)) {
+          await fs.remove(userDataDir) // fs-extra: xóa folder + toàn bộ nội dung
         }
-        await Promise.allSettled(tasks)
+        const partitionDir = join(app.getPath('userData'), 'Partitions')
+        if (fs.existsSync(partitionDir)) {
+          await fs.remove(partitionDir) // fs-extra: xóa folder + toàn bộ nội dung
+        }
+        const extensionsDir = join(app.getPath('userData'), 'extensions')
+        if (fs.existsSync(extensionsDir)) {
+          await fs.remove(extensionsDir) // fs-extra: xóa folder + toàn bộ nội dung
+        }
       } catch {
         /* noop */
       }
       return true
     })
-    ipcMain.handle('bv:inject-script', async (_e, { id, script, cssText }) => {
+    ipcMain.handle('bv:inject-script', async (_e, { id, script }) => {
       const v = getView(id)
       if (!v || !script) {
         return false
@@ -452,9 +614,6 @@ if (!gotTheLock) {
         }
         const fn = new Function('ctx', `return (async () => { ${script} })()`)
         await fn(ctx)
-        v.webContents.on('did-finish-load', async () => {
-          await v.webContents.insertCSS(cssText)
-        })
         return true
       } catch {
         /* noop */
@@ -486,8 +645,9 @@ if (!gotTheLock) {
   })
 }
 
-app.on('window-all-closed', () => {
+app.on('window-all-closed', async () => {
   if (process.platform !== 'darwin') {
+    await ChromeLauncher.killAll()
     app.quit()
   }
 })

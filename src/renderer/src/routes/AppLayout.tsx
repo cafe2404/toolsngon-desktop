@@ -35,7 +35,7 @@ function AppLayout(): React.JSX.Element {
         return () => clearInterval(interval);
     }, []);
     return (
-        <div className="w-full h-screen bg-white flex  overflow-y-hidden flex-col">
+        <div className="w-screen h-screen bg-white flex overflow-y-hidden flex-col">
             <TabTitle />
             <TabControl />
             <div className="flex flex-1 w-full border-t border-slate-200 overflow-y-auto">

@@ -28,7 +28,7 @@ export default function AuthCallback() {
             const toastId = toast.error(errorMsg, {
                 duration: Infinity,
                 action: {
-                    label: "Dismiss",
+                    label: "Đóng",
                     onClick: () => toast.dismiss(toastId),
                 },
             })
