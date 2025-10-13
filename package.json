@@ -20,8 +20,8 @@
     "build:mac": "electron-vite build && electron-builder --mac",
     "build:linux": "electron-vite build && electron-builder --linux",
     "publish:win": "npm run build && electron-builder --win --publish always",
-    "publish:mac": "npm run build && electron-builder --mac --universal --publish always",
-    "publish:linux": "npm run build && electron-builder --linux --publish always"
+    "publish:mac": "npm run build && electron-builder --mac --universal --publish always --forcePublish",
+    "publish:linux": "npm run build && electron-builder --linux --publish always --forcePublish"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
