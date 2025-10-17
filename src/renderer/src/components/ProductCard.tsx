@@ -74,7 +74,7 @@ const ProductCard = ({ item }: { item: UserProduct }): JSX.Element => {
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <button onClick={handleOpenTab} className="rounded-md text-sm bg-slate-50 hover:bg-slate-100 gap-2 w-56 px-2 py-2 flex items-center justify-between text-slate-600 duration-300">
-                                    <div className="flex items-center gap-1">
+                                    <div className="flex items-center gap-1 truncate">
                                         <UserIcon size={20} />
                                         {currentAccount ? currentAccount?.name ?? `Tài khoản ${currentAccount.id}` : "Chọn tài khoản"}
                                     </div>

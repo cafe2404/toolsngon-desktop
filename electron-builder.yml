@@ -12,7 +12,12 @@ files:
 asarUnpack:
   - resources/**
 win:
+  target: nsis
   executableName: toolsngon
+  certificateSha1: "F33A0681FF0EE3FADBA098CF0C9E24228942651F"
+  signtoolOptions:
+    signingHashAlgorithms: ['sha256']
+    rfc3161TimeStampServer: "http://timestamp.digicert.com"
 nsis:
   artifactName: ${name}-setup.${ext}
   shortcutName: ${productName}
@@ -43,3 +48,4 @@ publish:
   owner: cafe2404
   repo: toolsngon-releases
   releaseType: release
+

@@ -26,6 +26,7 @@ import https from 'https'
 import http from 'http'
 
 let mainWindow
+let pendingDeepLink: string | null = null
 
 autoUpdater.on('update-downloaded', () => {
   autoUpdater.quitAndInstall()
@@ -55,12 +56,13 @@ function createWindow(): void {
     titleBarOverlay: {
       color: '#00000000', // màu nền của overlay (navbar)
       symbolColor: '#1e293b', // màu icon minimize/maximize/close
-      height: 36 // chiều cao vùng overlay
+      height: 44 // chiều cao vùng overlay
     },
     visualEffectState: 'active', // auto đổi 'inactive' khi mất focus
     ...(process.platform === 'linux' ? { icon } : {}),
     icon: icon,
     webPreferences: {
+      devTools:is.dev,
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
       webviewTag: false
@@ -69,6 +71,11 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
+    // Xử lý pending deep-link nếu có
+    if (pendingDeepLink) {
+      mainWindow.webContents.send('deep-link', pendingDeepLink)
+      pendingDeepLink = null
+    }
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -93,16 +100,25 @@ if (!gotTheLock) {
 } else {
   app.on('second-instance', (_, argv) => {
     const url = argv.find((arg) => arg.startsWith('toolsngon://'))
-    if (url && mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore()
-      mainWindow.focus()
-      mainWindow.webContents.send('deep-link', url)
+    if (url) {
+      if (mainWindow && mainWindow.webContents) {
+        if (mainWindow.isMinimized()) mainWindow.restore()
+        mainWindow.focus()
+        mainWindow.webContents.send('deep-link', url)
+      } else {
+        // Lưu deep-link để xử lý sau khi mainWindow sẵn sàng
+        pendingDeepLink = url
+      }
     }
   })
 
   app.whenReady().then(async () => {
     // Set app user model id for windows
     electronApp.setAppUserModelId('com.toolsngon')
+    const startupUrl = process.argv.find((arg) => arg.startsWith('toolsngon://'))
+    if (startupUrl && !pendingDeepLink) {
+      pendingDeepLink = startupUrl
+    }
     app.on('browser-window-created', (_, window) => {
       optimizer.watchWindowShortcuts(window)
     })
@@ -211,6 +227,7 @@ if (!gotTheLock) {
         view = new BrowserView({
           webPreferences: {
             sandbox: false,
+            devTools:is.dev,
             partition,
             additionalArguments: additionalArguments,
             preload: join(__dirname, '../preload/device.js')
@@ -468,7 +485,6 @@ if (!gotTheLock) {
             for (const [key, value] of Object.entries(lsData)) {
               localStorage.setItem(key, value);
             }
-            console.log('✅ LocalStorage injected');
           `)
         }
         await view.webContents.reload()
@@ -587,7 +603,7 @@ if (!gotTheLock) {
           const url = `https://2fa.live/tok/${clean}`
           const res = await fetch(url)
           if (!res.ok) throw new Error(`2fa fetch failed ${res.status}`)
-          const resJson: { token: string } = await res.json()
+          const resJson = await res.json()
           return resJson.token
         }
         const parseCookies = (cookieString: string): Record<string, string> =>
@@ -653,8 +669,11 @@ app.on('window-all-closed', async () => {
 })
 app.on('open-url', (event, url) => {
   event.preventDefault()
-  if (mainWindow) {
+  if (mainWindow && mainWindow.webContents) {
     mainWindow.webContents.send('deep-link', url)
+  } else {
+    // Lưu deep-link để xử lý sau khi mainWindow sẵn sàng
+    pendingDeepLink = url
   }
 })
 // In this file you can include the rest of your app's specific main process

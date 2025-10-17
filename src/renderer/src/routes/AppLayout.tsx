@@ -5,8 +5,8 @@ import { useTabs } from '../contexts/TabContext'
 import { useAuth } from '../contexts/AuthContext'
 import { Toaster } from "@components/ui/sonner"
 import Tablist from '../components/Tablist'
-import TabTitle from '../components/ui/TabTitle'
 import TabControl from '../components/TabControl'
+import TabBar from '../components/TabBar'
 
 function AppLayout(): React.JSX.Element {
     const { tabs } = useTabs()
@@ -35,10 +35,10 @@ function AppLayout(): React.JSX.Element {
         return () => clearInterval(interval);
     }, []);
     return (
-        <div className="w-screen h-screen bg-white flex overflow-y-hidden flex-col">
-            <TabTitle />
+        <div className="w-screen h-screen bg-slate-200 flex overflow-y-hidden flex-col">
+            <TabBar/>
             <TabControl />
-            <div className="flex flex-1 w-full border-t border-slate-200 overflow-y-auto">
+            <div className="flex flex-1 w-full overflow-y-auto">
                 {tabs.filter((t) => t.type === "external").length > 0 &&
                     <Tablist></Tablist>
                 }

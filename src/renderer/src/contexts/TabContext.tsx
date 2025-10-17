@@ -47,7 +47,7 @@ export type TabContextType = {
 const TabContext = createContext<TabContextType | null>(null)
 
 const initialTabs: Tab[] = [
-  { id: "1", name: "dashboard", title: "Trang chủ", type: "internal", component: Dashboard, currentUrl: "https://www.toolsngon.com/dashboard/" },
+  { id: "1", name: "dashboard", title: "Quản lý tài khoản", type: "internal", component: Dashboard, currentUrl: "https://www.toolsngon.com/dashboard/" },
 ]
 
 export function TabProvider({ children }: { children: ReactNode }): React.JSX.Element {

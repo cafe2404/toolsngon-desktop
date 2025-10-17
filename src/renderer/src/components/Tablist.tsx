@@ -33,18 +33,18 @@ const Tablist = (): React.JSX.Element => {
         <motion.div
             animate={{ width: isOpen ? 224 : 48 }} // 224px = w-56, 44px = w-11
             transition={{ type: "tween", duration: 0.05, ease: "easeInOut" }}
-            className={`flex flex-col gap-1.5 h-full duration-200 bg-slate-100 border-t border-r border-slate-200`}
+            className={`flex flex-col gap-1.5 h-full duration-200 bg-white border-r border-slate-200`}
         >
             {/* 📋 Tiêu đề + nút menu */}
-            <div className={`flex items-center justify-between ${isOpen ? "pr-2 pl-4 " : 'px-2' } py-1.5 mb-1.5 border-b border-l-slate-200`}>
+            <div className={`flex items-center justify-between ${isOpen ? "pr-2 pl-4 " : 'px-2' } pt-1.5 mb-1.5`}>
                 <motion.h3
                     initial={false}
                     animate={{ opacity: isOpen ? 1 : 0, width: isOpen ? "auto" : 0 }}
                     className="font-semibold text-sm whitespace-nowrap overflow-hidden"
                 >
-                    Danh sách tab
+                    Đang mở
                 </motion.h3>
-                <button onClick={togglePanel} className='h-8 w-8 min-w-8 rounded-lg hover:bg-slate-300 text-slate-800 flex items-center justify-center duration-300'>
+                <button onClick={togglePanel} className='h-8 w-8 min-w-8 rounded-lg hover:bg-slate-200 text-slate-800 flex items-center justify-center duration-300'>
                     {isOpen ? <PanelRightOpen size={16}></PanelRightOpen> : <PanelLeftOpen size={16}></PanelLeftOpen>}
                 </button>
             </div>
@@ -71,8 +71,8 @@ const Tablist = (): React.JSX.Element => {
                             onPointerDown={() => switchTab(tab.id)}
                             layout
                             className={`relative ${currentTab.id === tab.id
-                                ? "bg-white shadow"
-                                : "hover:bg-slate-300 duration-150"
+                                ? "bg-slate-200 "
+                                : "hover:bg-slate-200 duration-150"
                                 } rounded-lg p-2`}
                         >
                             <motion.div
