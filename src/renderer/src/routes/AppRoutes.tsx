@@ -6,7 +6,8 @@ import AuthCallback from './pages/AuthCallback'
 import AuthLayout from './AuthLayout'
 import { AuthProvider } from '@contexts/AuthContext'
 import { useAuth } from '@contexts/AuthContext'
-import { TabProvider } from '../contexts/TabContext'
+import { ProfileProvider } from '../contexts/ProfileContext'
+import { BlockedUrlsProvider } from '../contexts/BlockedUrlsContext'
 import TabContent from './pages/TabContent'
 import { PanelProvider } from '../contexts/PanelContext'
 import DeepLinkListener from './pages/DeepLinkListener'
@@ -27,21 +28,23 @@ function AppRoutes(): React.JSX.Element {
         <HashRouter>
             <PanelProvider>
                 <AuthProvider>
-                    <TabProvider>
-                        <DeepLinkListener />
-                        <Routes>
-                            {/* Private routes */}
-                            <Route element={<PrivateRoute><AppLayout /></PrivateRoute>}>
-                                <Route path="/" element={<TabContent />} />
-                            </Route>
-                            {/* Public routes */}
-                            <Route element={<PublicRoute><AuthLayout /></PublicRoute>}>
-                                <Route path="/auth/callback" element={<AuthCallback />} />
-                                <Route path="/login" element={<Login />} />
-                            </Route>
-                            <Route path="*" element={<Navigate to="/login" replace />} />
-                        </Routes>
-                    </TabProvider>
+                    <ProfileProvider>
+                        <BlockedUrlsProvider>
+                            <DeepLinkListener />
+                            <Routes>
+                                {/* Private routes */}
+                                <Route element={<PrivateRoute><AppLayout /></PrivateRoute>}>
+                                    <Route path="/" element={<TabContent />} />
+                                </Route>
+                                {/* Public routes */}
+                                <Route element={<PublicRoute><AuthLayout /></PublicRoute>}>
+                                    <Route path="/auth/callback" element={<AuthCallback />} />
+                                    <Route path="/login" element={<Login />} />
+                                </Route>
+                                <Route path="*" element={<Navigate to="/login" replace />} />
+                            </Routes>
+                        </BlockedUrlsProvider>
+                    </ProfileProvider>
                 </AuthProvider>
             </PanelProvider>
         </HashRouter>

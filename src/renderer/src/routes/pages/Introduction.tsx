@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
-import { useTabs } from "@renderer/contexts/TabContext";
+import { useProfiles } from "@renderer/contexts/ProfileContext";
 import { BugIcon, LoaderCircle, MousePointerClick, SquareArrowOutUpRight } from "lucide-react";
 import ReactPlayer from "react-player";
 import {
@@ -12,10 +12,10 @@ import {
 } from "@components/ui/dialog"
 
 export default function Introduction() {
-    const { currentTab } = useTabs()
+    const { currentTab } = useProfiles()
 
     return (
-        <div className={`w-full flex gap-12 flex-col p-24 h-full items-center justify-center overflow-y-auto`} style={{ display: currentTab.id === "2" ? "flex" : "none" }}   >
+        <div className={`w-full flex gap-12 flex-col p-24 h-full items-center justify-center overflow-y-auto`} style={{ display: currentTab?.id === "2" ? "flex" : "none" }}   >
             <div className="flex flex-col container mx-auto text-center">
                 <h1 className="text-4xl whitespace-nowrap font-medium text-slate-800 mb-4">Hướng dẫn sử dụng Toolsngon</h1>
                 <h1 className="tfont-medium text-slate-600 mb-16">Vui lòng xem kĩ hướng dẫn, nếu gặp vấn đề gì vui lòng liên hệ admin.</h1>

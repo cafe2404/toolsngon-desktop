@@ -24,6 +24,7 @@ import * as ChromeLauncher from 'chrome-launcher'
 import fs from 'fs-extra' // hoặc 'fs' bình thường nhưng fs-extra tiện hơn
 import https from 'https'
 import http from 'http'
+import { blockedUrlsManager } from './blockedUrls'
 
 let mainWindow
 let pendingDeepLink: string | null = null
@@ -62,7 +63,7 @@ function createWindow(): void {
     ...(process.platform === 'linux' ? { icon } : {}),
     icon: icon,
     webPreferences: {
-      devTools:is.dev,
+      devTools: is.dev,
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
       webviewTag: false
@@ -188,8 +189,9 @@ if (!gotTheLock) {
     })
     createWindow()
 
-    // BrowserView manager
-    const views = new Map<string, BrowserView>()
+    // BrowserView manager - now profile-based
+    const views = new Map<string, BrowserView>() // key: tabId, value: BrowserView
+    const profileViews = new Map<string, Set<string>>() // key: profileId, value: Set<tabIds>
     const getView = (id: string): BrowserView | undefined => views.get(id)
     let activeView: BrowserView | null = null
 
@@ -204,12 +206,13 @@ if (!gotTheLock) {
       id: string,
       url?: string,
       account?: Account,
-      activate: boolean = true
+      activate: boolean = true,
+      profileId?: string
     ): Promise<BrowserView | undefined> => {
       let view = views.get(id)
       if (!view) {
-        const partition = `persist:tab-${id}`
-        // Chuyển object thành mảng các chuỗi --key=value
+        // Use profileId for partition if provided, otherwise fallback to tab id
+        const partition = profileId ? `persist:profile-${profileId}` : `persist:profile-${id}`
         let additionalArguments
         if (account?.device) {
           const device = account?.device
@@ -227,13 +230,21 @@ if (!gotTheLock) {
         view = new BrowserView({
           webPreferences: {
             sandbox: false,
-            devTools:is.dev,
+            devTools: is.dev,
             partition,
             additionalArguments: additionalArguments,
             preload: join(__dirname, '../preload/device.js')
           }
         })
         views.set(id, view)
+
+        // Track this tab in the profile
+        if (profileId) {
+          if (!profileViews.has(profileId)) {
+            profileViews.set(profileId, new Set())
+          }
+          profileViews.get(profileId)!.add(id)
+        }
         const session = view.webContents.session
         if (account?.device?.ip_address) {
           // Ví dụ: "http://gbpTxemouE:u0CxVMNM4aob777041@103.161.179.43:49697"
@@ -259,8 +270,6 @@ if (!gotTheLock) {
                 }
               })
             }
-
-            console.log(`✅ Proxy set: ${host}:${port}`)
           }
         }
         if (account?.cookies) {
@@ -277,9 +286,7 @@ if (!gotTheLock) {
                 httpOnly: c.httpOnly || false,
                 expirationDate: c.expirationDate
               }
-              // Chỉ set domain nếu không phải __Host-
               if (!isHost && c.domain) {
-                // @ts-ignore: Electron typings không có domain, nhưng runtime support
                 cookieObj.domain = c.domain
               }
               session.cookies
@@ -306,7 +313,6 @@ if (!gotTheLock) {
         }
         console.log(view.webContents.session.extensions.getAllExtensions())
         view.webContents.setWindowOpenHandler(({ url }) => {
-          // open in same view
           try {
             view?.webContents.loadURL(url)
           } catch {
@@ -463,8 +469,47 @@ if (!gotTheLock) {
           const menu = Menu.buildFromTemplate(createMenuItem(_, params))
           menu.popup()
         })
+
+        // URL blocking logic
+        const shouldBlock = (url: string): boolean => {
+          if (!url) return false
+          const lower = url.toLowerCase()
+          return blockedUrlsManager.blockedKeywords.some((keyword) =>
+            lower.includes(keyword.toLowerCase())
+          )
+        }
+
+        // Ensure blocked keywords are loaded
+        await blockedUrlsManager.getBlockedKeywords()
+
+        // Block requests
+        view.webContents.session.webRequest.onBeforeRequest((details, callback) => {
+          const { url } = details
+          if (shouldBlock(url)) {
+            console.log(`⛔ Blocked request: ${url}`)
+            return callback({ cancel: true }) // chặn request
+          }
+          callback({}) // cho phép
+        })
+
+        // Block navigation
+        view.webContents.on('will-navigate', (event, url) => {
+          if (shouldBlock(url)) {
+            console.log(`⛔ Blocked navigation: ${url}`)
+            event.preventDefault()
+          }
+        })
+
+        // Block redirects
+        view.webContents.on('will-redirect', (event, url) => {
+          if (shouldBlock(url)) {
+            console.log(`⛔ Blocked redirect: ${url}`)
+            event.preventDefault()
+          }
+        })
       }
       if (url) {
+        // Load URL - blocking will be handled by webRequest handlers
         await view.webContents.loadURL(url)
         const screenResolution = account && account.device && account.device.screen_resolution
         if (screenResolution) {
@@ -496,8 +541,8 @@ if (!gotTheLock) {
       return view
     }
 
-    ipcMain.handle('bv:attach', async (_e, { id, url, account, bounds, activate }) => {
-      const view = await attachView(id, url, account, activate)
+    ipcMain.handle('bv:attach', async (_e, { id, url, account, bounds, activate, profileId }) => {
+      const view = await attachView(id, url, account, activate, profileId)
       if (view && bounds) {
         view.setBounds(computeBounds(bounds))
       }
@@ -512,9 +557,19 @@ if (!gotTheLock) {
       v?.setBounds(computeBounds(bounds))
       return true
     })
+    ipcMain.handle('bv:focus', (_e, { id }) => {
+      const v = getView(id)
+      if (v) {
+        mainWindow?.setBrowserView(v)
+        activeView = v
+      }
+      return true
+    })
     ipcMain.handle('bv:navigate', (_e, { id, url }) => {
       const v = getView(id)
-      if (v && url) v.webContents.loadURL(url)
+      if (v && url) {
+        v.webContents.loadURL(url)
+      }
       return true
     })
     ipcMain.handle('bv:back', (_e, { id }) => {
@@ -537,7 +592,7 @@ if (!gotTheLock) {
       v?.webContents.stop()
       return true
     })
-    ipcMain.handle('bv:destroy', (_e, { id }) => {
+    ipcMain.handle('bv:destroy', (_e, { id, profileId }) => {
       const v = getView(id)
       if (v) {
         if (mainWindow?.getBrowserView() === v) {
@@ -545,6 +600,12 @@ if (!gotTheLock) {
           if (activeView === v) activeView = null
         }
         views.delete(id)
+        if (profileId && profileViews.has(profileId)) {
+          profileViews.get(profileId)!.delete(id)
+          if (profileViews.get(profileId)!.size === 0) {
+            profileViews.delete(profileId)
+          }
+        }
         try {
           ;(v as unknown as { destroy?: () => void }).destroy?.()
         } catch {
@@ -553,6 +614,32 @@ if (!gotTheLock) {
       }
       return true
     })
+    ipcMain.handle('bv:destroy-profile', (_e, { profileId }) => {
+      const tabIds = profileViews.get(profileId)
+      if (tabIds) {
+        for (const tabId of tabIds) {
+          const v = views.get(tabId)
+          if (v) {
+            try {
+              if (mainWindow?.getBrowserView() === v)
+                mainWindow.setBrowserView(null as unknown as BrowserView)
+              if (activeView === v) activeView = null
+            } catch {
+              /* noop */
+            }
+            try {
+              ;(v as unknown as { destroy?: () => void }).destroy?.()
+            } catch {
+              /* noop */
+            }
+            views.delete(tabId)
+          }
+        }
+        profileViews.delete(profileId)
+      }
+      return true
+    })
+
     ipcMain.handle('bv:destroy-all', () => {
       for (const v of views.values()) {
         try {
@@ -568,6 +655,45 @@ if (!gotTheLock) {
         }
       }
       views.clear()
+      profileViews.clear()
+      return true
+    })
+    ipcMain.handle('bv:clear-profile-data', async (_e, { profileId }) => {
+      try {
+        // Clear sessions for all tabs in this profile
+        const tabIds = profileViews.get(profileId)
+        if (tabIds) {
+          const sessions = new Set()
+          for (const tabId of tabIds) {
+            const view = views.get(tabId)
+            if (view) {
+              sessions.add(view.webContents.session)
+            }
+          }
+
+          const clearTasks: Array<Promise<void>> = []
+          for (const s of sessions) {
+            clearTasks.push((s as Electron.Session).clearCache())
+            clearTasks.push(
+              (s as Electron.Session).clearStorageData({
+                storages: [
+                  'cookies',
+                  'filesystem',
+                  'indexdb',
+                  'localstorage',
+                  'shadercache',
+                  'serviceworkers',
+                  'cachestorage',
+                  'websql'
+                ]
+              })
+            )
+          }
+          await Promise.allSettled(clearTasks)
+        }
+      } catch {
+        /* noop */
+      }
       return true
     })
     ipcMain.handle('bv:clear-all-data', async () => {
@@ -575,15 +701,15 @@ if (!gotTheLock) {
         await ChromeLauncher.killAll()
         const userDataDir = join(app.getPath('userData'), 'chrome-profile')
         if (fs.existsSync(userDataDir)) {
-          await fs.remove(userDataDir) // fs-extra: xóa folder + toàn bộ nội dung
+          await fs.remove(userDataDir)
         }
         const partitionDir = join(app.getPath('userData'), 'Partitions')
         if (fs.existsSync(partitionDir)) {
-          await fs.remove(partitionDir) // fs-extra: xóa folder + toàn bộ nội dung
+          await fs.remove(partitionDir)
         }
         const extensionsDir = join(app.getPath('userData'), 'extensions')
         if (fs.existsSync(extensionsDir)) {
-          await fs.remove(extensionsDir) // fs-extra: xóa folder + toàn bộ nội dung
+          await fs.remove(extensionsDir)
         }
       } catch {
         /* noop */
@@ -672,9 +798,6 @@ app.on('open-url', (event, url) => {
   if (mainWindow && mainWindow.webContents) {
     mainWindow.webContents.send('deep-link', url)
   } else {
-    // Lưu deep-link để xử lý sau khi mainWindow sẵn sàng
     pendingDeepLink = url
   }
 })
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and require them here.

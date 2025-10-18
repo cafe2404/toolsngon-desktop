@@ -102,9 +102,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const logout = useCallback(async () => {
         try {
-            await clearAuth()
+            // Close all tabs first
             await window.api?.browserView?.destroyAll?.()
             await window.api?.browserView?.clearAllData?.()
+            await clearAuth()
         } catch {
             // noop
         }

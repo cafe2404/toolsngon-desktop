@@ -1,8 +1,8 @@
 import { JSX } from "react";
-import { useTabs } from "../../contexts/TabContext";
+import { useProfiles } from "../../contexts/ProfileContext";
 
 const TabTitle = (): JSX.Element => {
-    const { currentTab } = useTabs()
+    const { currentTab } = useProfiles()
     return (
         <div className="text-center gap-2 navbar relative w-full h-8 flex items-center justify-center text-slate-800 text-sm font-medium">
             <p className="truncate">{currentTab.title}</p>

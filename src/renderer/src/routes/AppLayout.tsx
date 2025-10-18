@@ -1,21 +1,21 @@
 import { Outlet } from 'react-router-dom'
 import { useEffect, useRef } from 'react'
 import api from '../lib/axios'
-import { useTabs } from '../contexts/TabContext'
+import { useProfiles } from '../contexts/ProfileContext'
 import { useAuth } from '../contexts/AuthContext'
 import { Toaster } from "@components/ui/sonner"
-import Tablist from '../components/Tablist'
+import ProfileBar from '../components/ProfileBar'
 import TabControl from '../components/TabControl'
 import TabBar from '../components/TabBar'
 
 function AppLayout(): React.JSX.Element {
-    const { tabs } = useTabs()
+    const { profiles } = useProfiles()
     const { user } = useAuth()
-    const tabsRef = useRef(tabs);
+    const profilesRef = useRef(profiles);
     const userRef = useRef(user);
     useEffect(() => {
-        tabsRef.current = tabs;
-    }, [tabs]);
+        profilesRef.current = profiles;
+    }, [profiles]);
 
     useEffect(() => {
         userRef.current = user;
@@ -26,9 +26,8 @@ function AppLayout(): React.JSX.Element {
             if (!userRef.current?.id) return
             api.post("/api/heartbeat/", {
                 user_id: userRef?.current?.id,
-                tabs: tabsRef.current,
+                profiles: profilesRef.current,
             }).catch(() => {
-                // không cần xử lý lỗi ở đây nếu chỉ tracking
             });
         }, 10000);
 
@@ -36,13 +35,13 @@ function AppLayout(): React.JSX.Element {
     }, []);
     return (
         <div className="w-screen h-screen bg-slate-200 flex overflow-y-hidden flex-col">
-            <TabBar/>
+            <TabBar />
             <TabControl />
-            <div className="flex flex-1 w-full overflow-y-auto">
-                {tabs.filter((t) => t.type === "external").length > 0 &&
-                    <Tablist></Tablist>
+            <div className="flex w-full h-full overflow-hidden">
+                {profiles.length > 1 &&
+                    <ProfileBar></ProfileBar>
                 }
-                <div className="w-full overflow-hidden h-full bg-white">
+                <div className="w-full h-full overflow-hidden bg-white">
                     <Outlet />
                 </div>
             </div>

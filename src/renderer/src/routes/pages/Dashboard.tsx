@@ -2,14 +2,14 @@
 import { Search } from "lucide-react";
 import { useMemo, useState, type ChangeEvent } from "react";
 import ProductCard from "@renderer/components/ProductCard";
-import { useTabs } from "@renderer/contexts/TabContext";
+import { useProfiles } from "@renderer/contexts/ProfileContext";
 import { useAuth } from "@renderer/contexts/AuthContext";
 
 
 export default function Dashboard() {
     const { userProducts, userProductsLoading, userProductsError } = useAuth()
     const [query, setQuery] = useState<string>("")
-    const { currentTab } = useTabs()
+    const { currentTab } = useProfiles()
     const filteredItems = useMemo(() => {
         const normalizedQuery = query.trim().toLowerCase()
         if (normalizedQuery.length === 0) return userProducts
@@ -28,7 +28,7 @@ export default function Dashboard() {
     }, [userProducts, query])
 
     return (
-        <div className={`w-full flex flex-col gap-6 p-6 h-full overflow-y-auto`} style={{ display: currentTab.id === "1" ? "flex" : "none" }}   >
+        <div className={`w-full flex flex-col gap-6 p-6 h-full overflow-y-auto`} style={{ display: currentTab?.id === "1" ? "flex" : "none" }}   >
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 w-2xl">
                     <div className="relative border border-slate-200 w-full h-10 rounded-lg gap-1 no-drag flex items-center px-1 py-1">

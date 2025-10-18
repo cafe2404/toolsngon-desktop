@@ -1,12 +1,12 @@
 import { useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useTabs } from '../../contexts/TabContext';
+import { useProfiles } from '../../contexts/ProfileContext';
 
 
 
 const DeepLinkListener = (): null => {
     const { userProducts } = useAuth()
-    const { addTab, injectScript } = useTabs()
+    const { addTab, injectScript } = useProfiles()
     useEffect(() => {
         const unsubscribe = window.api.onDeepLink(async (url) => {
             const parsed = new URL(url)
@@ -29,7 +29,7 @@ const DeepLinkListener = (): null => {
                         account: account,
                     })
                     if (account?.script) {
-                        await injectScript(tabId, account)
+                        await injectScript(tabId, account.script)
                     }
                 }
             }

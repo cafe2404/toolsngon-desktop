@@ -25,20 +25,24 @@ const api = {
       url?: string,
       account?: Account,
       bounds?: { x: number; y: number; width: number; height: number },
-      activate: boolean = true
-    ) => ipcRenderer.invoke('bv:attach', { id, url, account, bounds, activate }),
+      activate: boolean = true,
+      profileId?: string
+    ) => ipcRenderer.invoke('bv:attach', { id, url, account, bounds, activate, profileId }),
     openChrome: (id: string, url?: string, account?: Account) =>
       ipcRenderer.invoke('bv:open-chrome', { id, url, account }),
     setBounds: (id: string, bounds: { x: number; y: number; width: number; height: number }) =>
       ipcRenderer.invoke('bv:set-bounds', { id, bounds }),
+    focus: (id: string) => ipcRenderer.invoke('bv:focus', { id }),
     navigate: (id: string, url: string) => ipcRenderer.invoke('bv:navigate', { id, url }),
     back: (id: string) => ipcRenderer.invoke('bv:back', { id }),
     forward: (id: string) => ipcRenderer.invoke('bv:forward', { id }),
     reload: (id: string) => ipcRenderer.invoke('bv:reload', { id }),
     stop: (id: string) => ipcRenderer.invoke('bv:stop', { id }),
     destroyAll: () => ipcRenderer.invoke('bv:destroy-all'),
+    destroyProfile: (profileId: string) => ipcRenderer.invoke('bv:destroy-profile', { profileId }),
     clearAllData: () => ipcRenderer.invoke('bv:clear-all-data'),
-    destroy: (id: string) => ipcRenderer.invoke('bv:destroy', { id }),
+    clearProfileData: (profileId: string) => ipcRenderer.invoke('bv:clear-profile-data', { profileId }),
+    destroy: (id: string, profileId?: string) => ipcRenderer.invoke('bv:destroy', { id, profileId }),
     injectScript: (id: string, script: string) =>
       ipcRenderer.invoke('bv:inject-script', { id, script })
   }

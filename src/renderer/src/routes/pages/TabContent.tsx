@@ -1,39 +1,53 @@
 import WebView from '../../components/WebView';
-import { useTabs } from '../../contexts/TabContext';
+import { useProfiles } from '../../contexts/ProfileContext';
 
 const TabContent = (): React.JSX.Element => {
-    const { tabs, splitTabs } = useTabs()
+    const { currentProfile, currentTab, profiles } = useProfiles()
+    
+    if (!currentProfile || !currentTab) return <></>;
+    
     return (
         <div className='w-full h-full flex'>
-            {splitTabs && splitTabs.length === 2 ? (
-                <>
-                    {splitTabs.map((id) => {
-                        const tab = tabs.find(t => t.id === id)
-                        if (!tab) return null
-                        return (
-                            <div key={id} className='flex-1 min-w-0 border-l border-slate-200 first:border-l-0'>
-                                {tab.type === 'internal' && tab.component ? (
-                                    (() => { const Component = tab.component; return <Component /> })()
-                                ) : (
-                                    <WebView tab={tab} />
-                                )}
-                            </div>
-                        )
-                    })}
-                </>
-            ) : (
-                tabs.map((tab) => {
-                    if (tab.type === "internal" && tab.component) {
-                        const Component = tab.component
-                        return <Component key={tab.id} />
-                    } else {
-                        return <WebView key={tab.id} tab={tab} />
-                    }
-                })
-            )}
+            <div className="w-full h-full">
+                {/* Render all React components from all profiles */}
+                {profiles.map((profile) => 
+                    profile.tabs.map((tab) => {
+                        if (tab.component) {
+                            return (
+                                <div 
+                                    className='h-full'
+                                    key={`${profile.id}-${tab.id}`}
+                                    style={{ 
+                                        display: profile.id === currentProfile.id && tab.id === currentTab.id ? "block" : "none" 
+                                    }}
+                                >
+                                    <tab.component />
+                                </div>
+                            )
+                        }
+                        return null
+                    })
+                )}
+                
+                {/* Render all WebView components from all profiles */}
+                {profiles.map((profile) => 
+                    profile.tabs.map((tab) => {
+                        if (!tab.component) {
+                            return (
+                                <WebView 
+                                    key={`${profile.id}-${tab.id}`} 
+                                    tab={tab} 
+                                    profileID={profile.id}
+                                    isActive={profile.id === currentProfile.id && tab.id === currentTab.id}
+                                />
+                            )
+                        }
+                        return null
+                    })
+                )}
+            </div>
         </div>
-
     );
-}
+};
 
 export default TabContent;

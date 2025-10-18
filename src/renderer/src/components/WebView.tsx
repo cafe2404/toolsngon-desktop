@@ -1,9 +1,9 @@
 import { useEffect, useLayoutEffect, useRef } from "react"
-import { Tab, useTabs } from "../contexts/TabContext"
+import { Tab, useProfiles } from "../contexts/ProfileContext"
 
-export default function WebView({ tab }: { tab: Tab }): React.JSX.Element {
+export default function WebView({ tab, profileID, isActive }: { tab: Tab, profileID: string, isActive?: boolean }): React.JSX.Element {
     const containerRef = useRef<HTMLDivElement>(null)
-    const { currentTab, updateTab } = useTabs()
+    const { currentTab, updateTab } = useProfiles()
 
     useLayoutEffect((): () => void => {
         const id = tab.id
@@ -19,13 +19,17 @@ export default function WebView({ tab }: { tab: Tab }): React.JSX.Element {
                 height: Math.floor(rect.height),
             }
         }
-        window.api?.browserView?.attach(
-            id, initialUrl,
-            tab.account,
-            calcBounds(),
-            false
-        )
-        updateTab(id, { viewReady: true })
+        // Only attach if this is the first time this tab is being rendered
+        if (!tab.viewReady) {
+            window.api?.browserView?.attach(
+                id, initialUrl,
+                tab.account,
+                calcBounds(),
+                false,
+                profileID
+            )
+            updateTab(profileID, id, { viewReady: true })
+        }
         const onResize = (): void => {
             // @ts-ignore: exposed by preload (api.browserView.setBounds)
             window.api?.browserView?.setBounds(id, calcBounds())
@@ -40,7 +44,7 @@ export default function WebView({ tab }: { tab: Tab }): React.JSX.Element {
 
         const updateHandler = (payload: { id: string; updates: Record<string, unknown> }): void => {
             if (payload.id !== id) return
-            updateTab(id, payload.updates as Partial<Tab>)
+            updateTab(profileID, id, payload.updates as Partial<Tab>)
         }
         // @ts-ignore: exposed by preload (api.onBrowserViewUpdate)
         const unsubscribe = window.api?.onBrowserViewUpdate(updateHandler)
@@ -49,16 +53,16 @@ export default function WebView({ tab }: { tab: Tab }): React.JSX.Element {
             window.removeEventListener('resize', onResize)
             if (ro) ro.disconnect()
             // @ts-ignore: exposed by preload (api.browserView.destroy)
-            window.api?.browserView?.destroy(id)
-            updateTab(id, { viewReady: false })
+            window.api?.browserView?.destroy(id, profileID)
+            updateTab(profileID,id, { viewReady: false })
             if (typeof unsubscribe === 'function') unsubscribe()
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [tab.id])
+    }, [tab.id, profileID])
 
     // When this tab becomes current, bring its BrowserView to front and refresh bounds
     useEffect((): void => {
-        if (currentTab.id !== tab.id) return
+        if (!isActive || currentTab?.id !== tab.id) return
         const id = tab.id
         const calcBounds = (): { x: number; y: number; width: number; height: number } => {
             const el = containerRef.current
@@ -71,23 +75,13 @@ export default function WebView({ tab }: { tab: Tab }): React.JSX.Element {
                 height: Math.floor(rect.height),
             }
         }
-        // Re-attach without URL to just focus/show this BrowserView
-        // Double-check current tab right before attach to avoid races
-        if (currentTab.id === id) {
-            // @ts-ignore: exposed by preload (api.browserView.attach)
-            window.api?.browserView?.attach(
-                id,
-                undefined,
-                undefined,
-                calcBounds(),
-                true
-            )
-            // @ts-ignore: exposed by preload (api.browserView.setBounds)
-            window.api?.browserView?.setBounds(id, calcBounds())
-        }
-    }, [currentTab.id, tab.id])
-
+        // Focus the BrowserView and update bounds without re-attaching to avoid reload
+        // @ts-ignore: exposed by preload (api.browserView.focus)
+        window.api?.browserView?.focus(id)
+        // @ts-ignore: exposed by preload (api.browserView.setBounds)
+        window.api?.browserView?.setBounds(id, calcBounds())
+    }, [isActive, currentTab?.id, tab.id, profileID])
     return (
-        <div ref={containerRef} className="w-full h-full" style={{ display: tab.id === currentTab.id ? "block" : "none" }} />
+        <div ref={containerRef} className="w-full h-full" style={{ display: tab.id === currentTab?.id ? "block" : "none" }} />
     )
 }
