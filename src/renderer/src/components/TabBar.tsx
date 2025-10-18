@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { Home, Loader2, Plus, XIcon } from "lucide-react"
 import { useProfiles } from "@renderer/contexts/ProfileContext"
-import TabTitle from "./ui/TabTitle"
 import { Reorder, motion } from "framer-motion";
 import React, { useMemo, useCallback } from "react";
 
@@ -56,8 +55,7 @@ const TabBar = () => {
     if (!currentProfile) return <></>;
     return (
         <div className='flex items-center gap-1.5 w-full py-1.5 bg-slate-200 navbar px-2'>
-            {/* Always show tabs if there are any tabs in the profile */}
-            {allTabs.length > 0 ? (
+            {allTabs.length > 0 && (
                 <>
                     <button onClick={handleOpenHome} className={`w-8 h-8 flex rounded-lg bg-white hover:bg-slate-300 duration-150 items-center justify-center`}>
                         <Home size={16}></Home>
@@ -130,8 +128,6 @@ const TabBar = () => {
                         </Reorder.Group>
                     </div>
                 </>
-            ) : (
-                <TabTitle />
             )}
         </div>
     )

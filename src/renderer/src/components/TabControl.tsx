@@ -126,7 +126,7 @@ const TabControl = () => {
       </div>
       <div className="w-full flex items-center justify-center">
         <div className="relative focus-within:border-blue-500 border-2 border-slate-200 bg-slate-200 w-full h-8 rounded-lg gap-1 no-drag flex items-center px-4 py-1">
-          <input readOnly={currentProfile.id === '1' || !currentTab?.account?.is_edit_omnibox} type="text" onKeyDown={handleKeyDown} className="bg-transparent focus:outline-none text-slate-800 text-sm w-full pr-2" value={url} onChange={(e) => setUrl(e.target.value)} name="" id="" />
+          <input readOnly={currentProfile.id === '1'} type="text" onKeyDown={handleKeyDown} className="bg-transparent focus:outline-none text-slate-800 text-sm w-full pr-2" value={url} onChange={(e) => setUrl(e.target.value)} name="" id="" />
         </div>
       </div>
       <button onClick={handleSwitchToDashboard} className={`h-8 w-8 min-w-8 rounded-lg text-slate-800 flex items-center justify-center duration-300 ${currentTab?.id === '1' ? 'bg-slate-200' : 'hover:bg-slate-200'}`}>

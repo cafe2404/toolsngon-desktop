@@ -486,7 +486,6 @@ if (!gotTheLock) {
         view.webContents.session.webRequest.onBeforeRequest((details, callback) => {
           const { url } = details
           if (shouldBlock(url)) {
-            console.log(`⛔ Blocked request: ${url}`)
             return callback({ cancel: true }) // chặn request
           }
           callback({}) // cho phép
