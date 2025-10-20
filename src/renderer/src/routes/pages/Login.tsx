@@ -33,7 +33,7 @@ export default function Login() {
             })
             setLoading(false)
             alert(
-                '❌ Network Error:\n' +
+                '❌ ' +
                 JSON.stringify(err.toJSON(), null, 2)
             )
         }
@@ -44,7 +44,6 @@ export default function Login() {
             if (parsed.host === 'auth') {
                 navigate("/auth/callback" + parsed.search)
             }
-            console.log("Renderer nhận deeplink:", parsed.href)
             setLoading(false)
         })
         return () => { try { (unsubscribe as unknown as (() => void) | undefined)?.() } catch { /* noop */ } }

@@ -5,7 +5,7 @@ import { useProfiles } from '../../contexts/ProfileContext';
 const DeepLinkListener = (): null => {
     const { userProducts } = useAuth()
     const { addTab, addProfile, setCurrentProfile, profiles, injectScript } = useProfiles()
-    
+
     useEffect(() => {
         const unsubscribe = window.api.onDeepLink(async (url) => {
             const parsed = new URL(url)
@@ -17,16 +17,16 @@ const DeepLinkListener = (): null => {
                 if (item) {
                     const account = item.account_group?.accounts.find(account => account.id === Number(accountId))
                     const tabId = `${item.product.slug}_${account?.id ?? '0'}`
-                    
+
                     // Check if profile already exists for this product
-                    const existingProfile = profiles.find(profile => 
+                    const existingProfile = profiles.find(profile =>
                         profile.id === `profile_${item.product.slug}_${account?.id ?? '0'}`
                     )
-                    
+
                     if (existingProfile) {
                         // Switch to existing profile
                         setCurrentProfile(existingProfile.id)
-                        
+
                         // Check if tab already exists in this profile
                         const existingTab = existingProfile.tabs.find(tab => tab.id === tabId)
                         if (existingTab) {
@@ -41,7 +41,6 @@ const DeepLinkListener = (): null => {
                                 url: item.product.url,
                                 currentUrl: item.product.url,
                                 favicon: item.product.logo_url,
-                                account: account,
                             })
                         }
                     } else {
@@ -55,7 +54,7 @@ const DeepLinkListener = (): null => {
                             currentTabId: undefined,
                             type: "external" as const,
                             name: item.product.title + ` (${account?.id})`,
-                            account: account
+                            account: account,
                         }
                         addProfile(newProfile)
                         setCurrentProfile(newProfileId)
@@ -66,16 +65,12 @@ const DeepLinkListener = (): null => {
                             url: item.product.url,
                             currentUrl: item.product.url,
                             favicon: item.product.logo_url,
-                            account: account,
                         })
                     }
-
-                    // Handle Chrome opening or script injection
                     if (account?.open_chrome) {
                         await window.api.browserView.openChrome(tabId, item.product.url, account)
                         return
                     }
-
                     if (account?.script) {
                         await injectScript(tabId, account.script)
                     }

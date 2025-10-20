@@ -29,10 +29,31 @@ import { blockedUrlsManager } from './blockedUrls'
 let mainWindow
 let pendingDeepLink: string | null = null
 
-autoUpdater.on('update-downloaded', () => {
+// Auto updater events
+autoUpdater.on('checking-for-update', () => {
+  console.log('🔍 Checking for updates...')
+})
+autoUpdater.on('update-available', (info) => {
+  console.log('📦 Update available:', info.version)
+})
+autoUpdater.on('update-not-available', (info) => {
+  console.log('✅ No updates available. Current version:', info.version)
+})
+autoUpdater.on('error', (err) => {
+  console.error('❌ Auto updater error:', err)
+})
+autoUpdater.on('download-progress', (progressObj) => {
+  console.log('⬇️ Download progress:', Math.round(progressObj.percent) + '%')
+})
+autoUpdater.on('update-downloaded', (info) => {
+  console.log('✅ Update downloaded:', info.version)
+  // Auto install after download
   autoUpdater.quitAndInstall()
 })
-autoUpdater.checkForUpdatesAndNotify()
+// Check for updates when app is ready
+app.whenReady().then(() => {
+  autoUpdater.checkForUpdatesAndNotify()
+})
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'chrome-extension', privileges: { secure: true, standard: true } }
@@ -302,7 +323,6 @@ if (!gotTheLock) {
           for (const ext of account.extensions) {
             try {
               const extensionPath = await prepareExtension(ext.zip_file, ext.extension_id)
-              console.log('extension', extensionPath)
               await view.webContents.session.extensions.loadExtension(extensionPath, {
                 allowFileAccess: true
               })
@@ -311,7 +331,6 @@ if (!gotTheLock) {
             }
           }
         }
-        console.log(view.webContents.session.extensions.getAllExtensions())
         view.webContents.setWindowOpenHandler(({ url }) => {
           try {
             view?.webContents.loadURL(url)
@@ -442,6 +461,15 @@ if (!gotTheLock) {
               visible: !!params.linkURL
             },
             {
+              label: 'Mở liên kết trong tab mới',
+              click: () => {
+                if (params.linkURL) {
+                  mainWindow.webContents.send('new-tab', params.linkURL)
+                }
+              },
+              visible: !!params.linkURL
+            },
+            {
               label: 'Mở liên kết trong trình duyệt',
               click: () => {
                 if (params.linkURL) {
@@ -469,46 +497,27 @@ if (!gotTheLock) {
           const menu = Menu.buildFromTemplate(createMenuItem(_, params))
           menu.popup()
         })
-
-        // URL blocking logic
-        const shouldBlock = (url: string): boolean => {
-          if (!url) return false
-          const lower = url.toLowerCase()
-          return blockedUrlsManager.blockedKeywords.some((keyword) =>
-            lower.includes(keyword.toLowerCase())
-          )
-        }
-
-        // Ensure blocked keywords are loaded
+        // console.log(view.webContents.session.extensions.getAllExtensions())
         await blockedUrlsManager.getBlockedKeywords()
-
-        // Block requests
         view.webContents.session.webRequest.onBeforeRequest((details, callback) => {
           const { url } = details
-          if (shouldBlock(url)) {
-            return callback({ cancel: true }) // chặn request
+          if (blockedUrlsManager.isUrlBlocked(url)) {
+            return callback({ cancel: true })
           }
-          callback({}) // cho phép
+          callback({})
         })
-
-        // Block navigation
         view.webContents.on('will-navigate', (event, url) => {
-          if (shouldBlock(url)) {
-            console.log(`⛔ Blocked navigation: ${url}`)
+          if (blockedUrlsManager.isUrlBlocked(url)) {
             event.preventDefault()
           }
         })
-
-        // Block redirects
         view.webContents.on('will-redirect', (event, url) => {
-          if (shouldBlock(url)) {
-            console.log(`⛔ Blocked redirect: ${url}`)
+          if (blockedUrlsManager.isUrlBlocked(url)) {
             event.preventDefault()
           }
         })
       }
       if (url) {
-        // Load URL - blocking will be handled by webRequest handlers
         await view.webContents.loadURL(url)
         const screenResolution = account && account.device && account.device.screen_resolution
         if (screenResolution) {

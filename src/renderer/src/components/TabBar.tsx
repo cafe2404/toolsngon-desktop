@@ -1,14 +1,20 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
-import { Home, Loader2, Plus, XIcon } from "lucide-react"
+import { Loader2, Plus, XIcon } from "lucide-react"
 import { useProfiles } from "@renderer/contexts/ProfileContext"
 import { Reorder, motion } from "framer-motion";
 import React, { useMemo, useCallback } from "react";
 
 const TabBar = () => {
-    const { switchTab, currentProfile, currentTab, closeTab, updateProfile, addTab } = useProfiles();
-
+    const {
+        switchTab,
+        currentProfile,
+        currentTab,
+        closeTab,
+        updateProfile,
+        addTab
+    } = useProfiles();
     // Memoize tabs to prevent unnecessary re-renders
-    const allTabs = useMemo(() => currentProfile?.tabs || [], [currentProfile?.tabs]);
+    const allTabs = useMemo(() => currentProfile?.tabs || [], [currentProfile]);
 
     const onReorder = useCallback((newOrder: typeof allTabs): void => {
         if (!currentProfile) return;
@@ -31,12 +37,6 @@ const TabBar = () => {
         }
     }, [currentProfile, closeTab]);
 
-
-    const handleOpenHome = useCallback(() => {
-        if (!currentTab?.url) return
-        window.api?.browserView?.navigate(currentTab.id, currentTab?.url)
-    }, [currentTab]);
-
     const handleAddNewTab = useCallback(() => {
         if (!currentProfile) return;
         // Add a new empty tab
@@ -51,16 +51,12 @@ const TabBar = () => {
         }
         addTab(currentProfile.id, newTab)
     }, [currentProfile, addTab]);
-
     if (!currentProfile) return <></>;
     return (
         <div className='flex items-center gap-1.5 w-full py-1.5 bg-slate-200 navbar px-2'>
-            {allTabs.length > 0 && (
+            {allTabs.length > 0 && currentProfile.id !== '1' ?
                 <>
-                    <button onClick={handleOpenHome} className={`w-8 h-8 flex rounded-lg bg-white hover:bg-slate-300 duration-150 items-center justify-center`}>
-                        <Home size={16}></Home>
-                    </button>
-                    <div className="no-scrollbar w-full" onWheel={onWheelHorizontal}>
+                    <div className="no-scrollbar w-full pr-44" onWheel={onWheelHorizontal}>
                         <Reorder.Group
                             layout="position"
                             transition={{
@@ -81,7 +77,7 @@ const TabBar = () => {
                                     onPointerDown={() => switchTab(currentProfile.id, tab.id)}
                                     layout
                                     className={`relative ${currentTab && currentTab.id === tab.id
-                                        ? "bg-white "
+                                        ? "bg-white"
                                         : "hover:bg-slate-200 duration-150"
                                         } rounded-lg p-2 w-full max-w-44 no-drag`}
                                 >
@@ -91,7 +87,7 @@ const TabBar = () => {
                                         whileTap={{ scale: 0.98 }}
                                     >
                                         <div className="h-full relative z-1 flex items-center justify-between w-full rounded-lg gap-2 overflow-hidden">
-                                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                            <div className="flex items-center justify-center lg:justify-start gap-2 flex-1 min-w-0">
                                                 {tab.isLoading ? (
                                                     <Loader2 className="size-4 min-w-4 animate-spin" />
                                                 ) : (
@@ -101,7 +97,7 @@ const TabBar = () => {
                                                         alt=""
                                                     />
                                                 )}
-                                                <div className="truncate text-left text-xs w-full">
+                                                <div className={`truncate text-left text-xs w-full ${allTabs.length > 16 ? 'hidden' : 'lg:block hidden'}`}>
                                                     {tab.title}
                                                 </div>
                                             </div>
@@ -111,7 +107,7 @@ const TabBar = () => {
                                                         e.stopPropagation();
                                                         closeTab(currentProfile.id, tab.id);
                                                     }}
-                                                    className="flex hover:bg-slate-200 items-center justify-center min-w-4 size-4 rounded-full duration-300 flex-shrink-0"
+                                                    className=" hover:bg-slate-200 lg:flex hidden items-center justify-center min-w-4 size-4 rounded-full duration-300 flex-shrink-0"
                                                 >
                                                     <XIcon size={14} />
                                                 </button>
@@ -120,15 +116,20 @@ const TabBar = () => {
                                     </motion.div>
                                 </Reorder.Item>
                             ))}
-                            {currentTab?.account?.is_create_tab &&
-                                <button onClick={handleAddNewTab} className={`w-8 h-8 flex rounded-lg hover:bg-slate-300 duration-150 items-center justify-center`}>
+                            {currentProfile.account?.is_create_tab && currentProfile?.id !== "1" &&
+                                <button onClick={handleAddNewTab} className={`min-w-8 w-8 h-8 flex rounded-lg hover:bg-slate-300 duration-150 items-center justify-center`}>
                                     <Plus size={16}></Plus>
                                 </button>
                             }
                         </Reorder.Group>
                     </div>
                 </>
-            )}
+                :
+                <div className="flex items-center justify-center h-8 w-full text-sm font-medium">
+                    {currentTab?.title}
+                </div>
+            }
+
         </div>
     )
 }

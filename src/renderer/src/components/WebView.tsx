@@ -3,7 +3,7 @@ import { Tab, useProfiles } from "../contexts/ProfileContext"
 
 export default function WebView({ tab, profileID, isActive }: { tab: Tab, profileID: string, isActive?: boolean }): React.JSX.Element {
     const containerRef = useRef<HTMLDivElement>(null)
-    const { currentTab, updateTab } = useProfiles()
+    const { currentTab, updateTab, currentProfile } = useProfiles()
 
     useLayoutEffect((): () => void => {
         const id = tab.id
@@ -23,7 +23,7 @@ export default function WebView({ tab, profileID, isActive }: { tab: Tab, profil
         if (!tab.viewReady) {
             window.api?.browserView?.attach(
                 id, initialUrl,
-                tab.account,
+                currentProfile?.account,
                 calcBounds(),
                 false,
                 profileID
@@ -54,7 +54,7 @@ export default function WebView({ tab, profileID, isActive }: { tab: Tab, profil
             if (ro) ro.disconnect()
             // @ts-ignore: exposed by preload (api.browserView.destroy)
             window.api?.browserView?.destroy(id, profileID)
-            updateTab(profileID,id, { viewReady: false })
+            updateTab(profileID, id, { viewReady: false })
             if (typeof unsubscribe === 'function') unsubscribe()
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -75,10 +75,7 @@ export default function WebView({ tab, profileID, isActive }: { tab: Tab, profil
                 height: Math.floor(rect.height),
             }
         }
-        // Focus the BrowserView and update bounds without re-attaching to avoid reload
-        // @ts-ignore: exposed by preload (api.browserView.focus)
         window.api?.browserView?.focus(id)
-        // @ts-ignore: exposed by preload (api.browserView.setBounds)
         window.api?.browserView?.setBounds(id, calcBounds())
     }, [isActive, currentTab?.id, tab.id, profileID])
     return (

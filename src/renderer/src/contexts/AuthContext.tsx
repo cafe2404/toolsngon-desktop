@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { api } from '@renderer/lib/axios'
-import type { UserProduct } from 'src/types/global'
+import type { AppSetting, UserProduct } from 'src/types/global'
 import { toast } from "sonner"
 
 
@@ -15,6 +15,7 @@ type User = {
 
 type AuthContextType = {
     user: User | null
+    appSetting: AppSetting | null
     accessToken: string | null
     refreshToken: string | null
     isLoading: boolean
@@ -26,6 +27,7 @@ type AuthContextType = {
     userProductsLoading: boolean
     userProductsError: string | null
     loadUserProducts: () => Promise<void>
+
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -39,8 +41,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [userProductsLoading, setUserProductsLoading] = useState<boolean>(false)
     const [userProductsError, setUserProductsError] = useState<string | null>(null)
     const [sessionId, setSessionId] = useState<string | null>(null)
+    const [appSetting, setAppSetting] = useState<AppSetting | null>(null)
     const isAuthenticated = !!accessToken
 
+    const getAppSetting = async () => {
+        const setting = await api.get("/api/appdesktop/settings/active/")
+        setAppSetting(setting.data)
+    }
     const saveTokens = useCallback(async (next: { access: string; refresh: string }) => {
         setAccessToken(next.access)
         setRefreshToken(next.refresh)
@@ -122,6 +129,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     try {
                         await fetchMe()
                         await loadUserProducts()
+                        await getAppSetting()
                     } catch {
                         await logout()
                     }
@@ -216,6 +224,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const value = useMemo<AuthContextType>(() => ({
         user,
+        appSetting,
         accessToken,
         refreshToken,
         isLoading,
@@ -227,7 +236,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userProductsLoading,
         userProductsError,
         loadUserProducts,
-    }), [user, accessToken, refreshToken, isLoading, isAuthenticated, loginWithCode, logout, refresh, userProducts, userProductsLoading, userProductsError, loadUserProducts])
+    }), [user, appSetting, accessToken, refreshToken, isLoading, isAuthenticated, loginWithCode, logout, refresh, userProducts, userProductsLoading, userProductsError, loadUserProducts])
 
     return (
         <AuthContext.Provider value={value}>

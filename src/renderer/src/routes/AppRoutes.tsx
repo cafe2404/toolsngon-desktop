@@ -10,6 +10,7 @@ import { ProfileProvider } from '../contexts/ProfileContext'
 import TabContent from './pages/TabContent'
 import { PanelProvider } from '../contexts/PanelContext'
 import DeepLinkListener from './pages/DeepLinkListener'
+import TabListener from './pages/TabListener'
 
 function PrivateRoute({ children }: { children: React.JSX.Element }): React.JSX.Element | null {
     const { isAuthenticated, isLoading } = useAuth()
@@ -29,6 +30,7 @@ function AppRoutes(): React.JSX.Element {
                 <AuthProvider>
                     <ProfileProvider>
                         <DeepLinkListener />
+                        <TabListener />
                         <Routes>
                             {/* Private routes */}
                             <Route element={<PrivateRoute><AppLayout /></PrivateRoute>}>

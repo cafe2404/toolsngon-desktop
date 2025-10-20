@@ -41,10 +41,17 @@ const api = {
     destroyAll: () => ipcRenderer.invoke('bv:destroy-all'),
     destroyProfile: (profileId: string) => ipcRenderer.invoke('bv:destroy-profile', { profileId }),
     clearAllData: () => ipcRenderer.invoke('bv:clear-all-data'),
-    clearProfileData: (profileId: string) => ipcRenderer.invoke('bv:clear-profile-data', { profileId }),
-    destroy: (id: string, profileId?: string) => ipcRenderer.invoke('bv:destroy', { id, profileId }),
+    clearProfileData: (profileId: string) =>
+      ipcRenderer.invoke('bv:clear-profile-data', { profileId }),
+    destroy: (id: string, profileId?: string) =>
+      ipcRenderer.invoke('bv:destroy', { id, profileId }),
     injectScript: (id: string, script: string) =>
-      ipcRenderer.invoke('bv:inject-script', { id, script })
+      ipcRenderer.invoke('bv:inject-script', { id, script }),
+    onNewTab: (callback: (url: string) => void): (() => void) => {
+      const listener = (_: Electron.IpcRendererEvent, url: string): void => callback(url)
+      ipcRenderer.on('new-tab', listener)
+      return () => ipcRenderer.removeListener('new-tab', listener)
+    }
   }
 }
 

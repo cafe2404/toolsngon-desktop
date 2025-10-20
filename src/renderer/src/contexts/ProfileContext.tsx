@@ -17,7 +17,6 @@ export type Tab = {
   canGoForward?: boolean
   component?: React.ComponentType
   viewReady?: boolean
-  account?: Account
 }
 
 export type Profile = {

@@ -55,7 +55,7 @@ const ProfileBar = (): React.JSX.Element => {
                         damping: 30,
                     }}
                     axis="y"
-                    values={profiles}
+                    values={externalProfiles}
                     onReorder={onReorder}
                     className="w-full flex flex-col gap-2"
                 >
