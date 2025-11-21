@@ -7,9 +7,12 @@ import { Toaster } from "@components/ui/sonner"
 import ProfileBar from '../components/ProfileBar'
 import TabControl from '../components/TabControl'
 import TabBar from '../components/TabBar'
+import TabInfo from '../components/TabInfo'
+import { usePanel } from '../contexts/PanelContext'
 
 function AppLayout(): React.JSX.Element {
-    const { profiles } = useProfiles()
+    const { profiles, currentProfile } = useProfiles()
+    const { isOpen } = usePanel()
     const { user } = useAuth()
     const profilesRef = useRef(profiles);
     const userRef = useRef(user);
@@ -44,6 +47,9 @@ function AppLayout(): React.JSX.Element {
                 <div className="w-full h-full overflow-hidden bg-white">
                     <Outlet />
                 </div>
+                {currentProfile && currentProfile.id !== '1' && isOpen &&
+                    <TabInfo />
+                }
             </div>
             <Toaster />
         </div>

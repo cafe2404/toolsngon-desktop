@@ -49,6 +49,7 @@ export type ProfileContextType = {
   stop: (tabId: string) => void
   reorderTabs: (profileId: string, dragId: string, hoverId: string) => void
   injectScript: (tabId: string, script: string) => Promise<boolean>
+  toggleFullscreen: (tabId: string) => Promise<boolean>
 }
 
 const ProfileContext = createContext<ProfileContextType | null>(null)
@@ -224,6 +225,16 @@ export function ProfileProvider({ children }: { children: ReactNode }): React.JS
     }
   }
 
+  const toggleFullscreen = async (tabId: string): Promise<boolean> => {
+    if (!tabId) return false
+    try {
+      const result = await window.api?.browserView?.toggleFullscreen(tabId)
+      return result === true
+    } catch {
+      return false
+    }
+  }
+
   return (
     <ProfileContext.Provider
       value={{
@@ -244,7 +255,8 @@ export function ProfileProvider({ children }: { children: ReactNode }): React.JS
         reload,
         stop,
         reorderTabs,
-        injectScript
+        injectScript,
+        toggleFullscreen
       }}
     >
       {children}

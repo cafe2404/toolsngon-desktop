@@ -13,6 +13,7 @@ type User = {
     avatar_url?: string
 }
 
+
 type AuthContextType = {
     user: User | null
     appSetting: AppSetting | null
@@ -27,7 +28,6 @@ type AuthContextType = {
     userProductsLoading: boolean
     userProductsError: string | null
     loadUserProducts: () => Promise<void>
-
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)

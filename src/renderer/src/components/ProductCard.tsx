@@ -80,13 +80,6 @@ const ProductCard = ({ item }: { item: UserProduct }): JSX.Element => {
         <div className="relative w-full white border border-slate-200 rounded-lg platform-item">
             <div className="flex relative group cursor-pointer gap-4 p-2">
                 <div onClick={handleOpenTab} className="overflow-hidden rounded-lg border relative border-slate-200 w-24 h-24 min-w-24 aspect-square bg-white">
-                    {profiles.some(profile => profile.tabs.some(tab => tab.id.startsWith(item.product.slug))) && (
-                        <div className="absolute bottom-0 px-2 py-1 left-0 w-full flex flex-col justify-end backdrop-blur-sm bg-slate-950/50">
-                            <div className="flex items-center gap-2 justify-center">
-                                <p className="text-white text-xs">Đang mở</p>
-                            </div>
-                        </div>
-                    )}
                     <img className="w-full h-full object-cover" src={item.product.logo_url} alt={item.product.title} />
                 </div>
                 <div className="py-2 relative w-full">

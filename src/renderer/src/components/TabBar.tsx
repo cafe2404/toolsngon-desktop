@@ -117,7 +117,7 @@ const TabBar = () => {
                                 </Reorder.Item>
                             ))}
                             {currentProfile.account?.is_create_tab && currentProfile?.id !== "1" &&
-                                <button onClick={handleAddNewTab} className={`min-w-8 w-8 h-8 flex rounded-lg hover:bg-slate-300 duration-150 items-center justify-center`}>
+                                <button onClick={handleAddNewTab} className={`min-w-8 w-8 h-8 flex rounded-lg hover:bg-slate-200 duration-150 items-center justify-center`}>
                                     <Plus size={16}></Plus>
                                 </button>
                             }

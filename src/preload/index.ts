@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import { Account } from '../types/global'
@@ -47,11 +48,52 @@ const api = {
       ipcRenderer.invoke('bv:destroy', { id, profileId }),
     injectScript: (id: string, script: string) =>
       ipcRenderer.invoke('bv:inject-script', { id, script }),
+    toggleFullscreen: (id: string) =>
+      ipcRenderer.invoke('bv:toggle-fullscreen', { id }),
     onNewTab: (callback: (url: string) => void): (() => void) => {
       const listener = (_: Electron.IpcRendererEvent, url: string): void => callback(url)
       ipcRenderer.on('new-tab', listener)
       return () => ipcRenderer.removeListener('new-tab', listener)
-    }
+    },
+    getCookies: (id: string) => ipcRenderer.invoke('bv:get-cookies', { id }),
+    getInfo: (id: string) => ipcRenderer.invoke('bv:get-info', { id }),
+    getSessionStorage: (id: string) => ipcRenderer.invoke('bv:get-session-storage', { id }),
+    getLocalStorage: (id: string) => ipcRenderer.invoke('bv:get-local-storage', { id }),
+    getIndexedDB: (id: string) => ipcRenderer.invoke('bv:get-indexed-db', { id }),
+    getWebSQL: (id: string) => ipcRenderer.invoke('bv:get-web-sql', { id }),
+    getCache: (id: string) => ipcRenderer.invoke('bv:get-cache', { id })
+  }
+}
+
+const updateApi = {
+  onUpdateChecking: (callback: () => void) => {
+    ipcRenderer.on('update-checking', callback)
+    return () => ipcRenderer.removeListener('update-checking', callback)
+  },
+  onUpdateAvailable: (callback: (info) => void) => {
+    const listener = (_: Electron.IpcRendererEvent, info) => callback(info)
+    ipcRenderer.on('update-available', listener)
+    return () => ipcRenderer.removeListener('update-available', listener)
+  },
+  onUpdateNotAvailable: (callback: (info) => void) => {
+    const listener = (_: Electron.IpcRendererEvent, info) => callback(info)
+    ipcRenderer.on('update-not-available', listener)
+    return () => ipcRenderer.removeListener('update-not-available', listener)
+  },
+  onUpdateError: (callback: (err: { message: string }) => void) => {
+    const listener = (_: Electron.IpcRendererEvent, err: { message: string }) => callback(err)
+    ipcRenderer.on('update-error', listener)
+    return () => ipcRenderer.removeListener('update-error', listener)
+  },
+  onUpdateProgress: (callback: (data) => void) => {
+    const listener = (_: Electron.IpcRendererEvent, data) => callback(data)
+    ipcRenderer.on('update-progress', listener)
+    return () => ipcRenderer.removeListener('update-progress', listener)
+  },
+  onUpdateDownloaded: (callback: (info) => void) => {
+    const listener = (_: Electron.IpcRendererEvent, info) => callback(info)
+    ipcRenderer.on('update-downloaded', listener)
+    return () => ipcRenderer.removeListener('update-downloaded', listener)
   }
 }
 
@@ -72,6 +114,7 @@ if (process.contextIsolated) {
     contextBridge.exposeInMainWorld('api', api)
     contextBridge.exposeInMainWorld('auth', authApi)
     contextBridge.exposeInMainWorld('os', osApi)
+    contextBridge.exposeInMainWorld('update', updateApi)
   } catch (error) {
     console.error(error)
   }

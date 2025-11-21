@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { ArrowRight } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import {  useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { api } from '@renderer/lib/axios'
 import { useAuth } from '@contexts/AuthContext'

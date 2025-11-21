@@ -75,7 +75,41 @@ export type AppSetting = {
     icon: string
     url: string
   }[]
+  socials: {
+    title: string
+    icon: string
+    url: string
+  }[]
+  top_banner?: string
   is_active: boolean
   created_at: Date
   updated_at: Date
+}
+
+export type Notify = {
+  id: number
+  title: string
+  description: string
+  image?: string
+  url?: string
+  created_at: Date
+  updated_at: Date
+}
+
+export type UpdateInfo = {
+  version: string
+  releaseDate?: string
+  releaseNotes?: string
+}
+
+export type UpdateProgress = {
+  percent: number
+  bytesPerSecond?: number
+  transferred?: number
+  total?: number
+}
+
+export type UpdateError = {
+  message: string
+  stack?: string
 }

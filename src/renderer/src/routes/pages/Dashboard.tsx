@@ -1,16 +1,22 @@
-/* eslint-disable no-unsafe-finally */
-/* eslint-disable @typescript-eslint/explicit-function-return-type */
-import { Ban,  CheckCheck, Copy, LogOut, Search } from "lucide-react";
-import { useEffect, useMemo, useState, type ChangeEvent } from "react";
+import { Ban, CheckCheck, Copy, Headset, Search } from "lucide-react";
+import { JSX, useEffect, useMemo, useState, type ChangeEvent } from "react";
 import ProductCard from "@renderer/components/ProductCard";
 import { useProfiles } from "@renderer/contexts/ProfileContext";
 import { useAuth } from "@renderer/contexts/AuthContext";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuGroup,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@components/ui/dropdown-menu"
 
-export default function Dashboard() {
-    const { userProducts, userProductsLoading, userProductsError } = useAuth()
+
+export default function Dashboard(): JSX.Element {
+    const { userProducts, userProductsLoading, userProductsError, appSetting } = useAuth()
     const [query, setQuery] = useState<string>("")
     const [copyUUID, setCopyUUID] = useState<'copy' | 'copied' | 'error'>('copy')
-    const { logout } = useAuth()
+
     const [appInfo, setAppInfo] = useState({
         device_name: "",
         os: "",
@@ -29,6 +35,7 @@ export default function Dashboard() {
         } finally {
             // clear trạng thái sau 2s
             const timeout = setTimeout(() => setCopyUUID('copy'), 2500)
+            // eslint-disable-next-line no-unsafe-finally
             return () => clearTimeout(timeout)
         }
     }
@@ -49,7 +56,7 @@ export default function Dashboard() {
             )
         })
     }, [userProducts, query])
-    const getAppInfo = async () => {
+    const getAppInfo = async (): Promise<void> => {
         const appInfo = await window.os.getAppInfo()
         setAppInfo(appInfo)
         const uuid = await window.os.getDeviceUUID()
@@ -60,6 +67,13 @@ export default function Dashboard() {
     }, [])
     return (
         <div className={`w-full flex flex-col gap-6 h-full relative overflow-y-auto`} style={{ display: currentTab?.id === "1" ? "flex" : "none" }}   >
+            {appSetting && appSetting?.top_banner &&
+                <div className="sticky top-0 z-50">
+                    <div
+                        dangerouslySetInnerHTML={{ __html: appSetting?.top_banner }}
+                    ></div>
+                </div>
+            }
             <div className="px-6 pt-6 flex-1">
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-2 w-2xl">
@@ -99,32 +113,50 @@ export default function Dashboard() {
                 )}
             </div>
             <div className="sticky bottom-0 left-0 w-full px-1.5 py-0.5 bg-white flex items-center border-t border-t-slate-200 gap-2">
-                <button className="flex items-center gap-2 py-1 px-2 duration-300 text-slate-600 hover:text-slate-800 rounded-lg">
+                <button className="flex items-center gap-2 py-1 duration-300 pl-2 text-slate-600 hover:text-slate-800 rounded-lg">
                     <div className="relative size-2 flex items-center justify-center">
                         <div className="absolute size-2 top-0 left-0 bg-green-500 rounded-full animate-ping"></div>
                         <div className="relative size-2 bg-green-500 rounded-full z-10"></div>
                     </div>
                     <span className="text-sm">Version {appInfo.app_version}</span>
                 </button>
-                <div className="w-px h-4 bg-slate-200"></div>
-                <div className="flex items-center gap-2 py-1 px-2 duration-300 text-slate-600 hover:text-slate-800 rounded-lg">
+                <div className="w-px h-4 bg-slate-300"></div>
+                <div className="flex items-center gap-2 py-1 duration-300 text-slate-600 hover:text-slate-800 rounded-lg">
                     <span className="text-sm ">Device: {deviceUUID.slice(0, 10) + "..."}</span>
-                    <button onClick={handleCopy} className="h-6 w-6 min-w-6 rounded-md text-slate-800 flex items-center justify-center duration-300 hover:bg-slate-300 ">
+                    <button onClick={handleCopy} className="h-6 w-6 min-w-6 rounded-md text-slate-800 flex items-center justify-center duration-300 hover:bg-slate-200 ">
                         {
                             copyUUID === 'copied'
                                 ? <CheckCheck size={14} className="text-green-500" />
                                 : copyUUID === 'error'
-                                    ? <Ban size={14} className="text-red-500"/>
+                                    ? <Ban size={14} className="text-red-500" />
                                     : <Copy size={14} />
                         }
                     </button>
                 </div>
                 <div className="flex-1">
                 </div>
-                <button onClick={logout} className="py-1 px-2 h-6 cursor-pointer hover:bg-slate-200 duration-300 text-slate-600 hover:text-slate-800 rounded-md flex items-center gap-2">
-                    <LogOut size={14} />
-                    <span className="text-xs">Đăng xuất</span>
-                </button>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <button className="py-1 px-2 h-6 cursor-pointer hover:bg-blue-600 duration-300 text-white bg-blue-500 rounded-md flex items-center gap-2">
+                            <Headset size={14} />
+                            <span className="text-sm">Hỗ trợ</span>
+                        </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuGroup>
+                            {appSetting && appSetting.socials.map(social => (
+                                <DropdownMenuItem key={social.title} asChild>
+                                    <a href={social.url} target="_blank" rel="noreferrer">
+                                        <span className="size-6 rounded-full flex items-center justify-center">
+                                            <img src={social.icon} alt="" />
+                                        </span>
+                                        {social.title}
+                                    </a>
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuGroup>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
         </div>
     )

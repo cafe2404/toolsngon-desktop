@@ -3,7 +3,7 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import AppLayout from './AppLayout'
 import Login from './pages/Login'
 import AuthCallback from './pages/AuthCallback'
-import AuthLayout from './AuthLayout'
+import ScreenLayout from './ScreenLayout'
 import { AuthProvider } from '@contexts/AuthContext'
 import { useAuth } from '@contexts/AuthContext'
 import { ProfileProvider } from '../contexts/ProfileContext'
@@ -11,6 +11,8 @@ import TabContent from './pages/TabContent'
 import { PanelProvider } from '../contexts/PanelContext'
 import DeepLinkListener from './pages/DeepLinkListener'
 import TabListener from './pages/TabListener'
+import Updater from './pages/Updater'
+import { UpdaterProvider } from '../contexts/UpdaterContext'
 
 function PrivateRoute({ children }: { children: React.JSX.Element }): React.JSX.Element | null {
     const { isAuthenticated, isLoading } = useAuth()
@@ -26,26 +28,32 @@ function PublicRoute({ children }: { children: React.JSX.Element }): React.JSX.E
 function AppRoutes(): React.JSX.Element {
     return (
         <HashRouter>
-            <PanelProvider>
-                <AuthProvider>
-                    <ProfileProvider>
-                        <DeepLinkListener />
-                        <TabListener />
-                        <Routes>
-                            {/* Private routes */}
-                            <Route element={<PrivateRoute><AppLayout /></PrivateRoute>}>
-                                <Route path="/" element={<TabContent />} />
-                            </Route>
-                            {/* Public routes */}
-                            <Route element={<PublicRoute><AuthLayout /></PublicRoute>}>
-                                <Route path="/auth/callback" element={<AuthCallback />} />
-                                <Route path="/login" element={<Login />} />
-                            </Route>
-                            <Route path="*" element={<Navigate to="/login" replace />} />
-                        </Routes>
-                    </ProfileProvider>
-                </AuthProvider>
-            </PanelProvider>
+            <UpdaterProvider>
+                <PanelProvider>
+                    <AuthProvider>
+                        <ProfileProvider>
+                            <DeepLinkListener />
+                            <TabListener />
+                            <Routes>
+                                {/* Updater*/}
+                                <Route element={<ScreenLayout />}>
+                                    <Route path="/updater" element={<Updater />} />
+                                </Route>
+                                {/* Private routes */}
+                                <Route element={<PrivateRoute><AppLayout /></PrivateRoute>}>
+                                    <Route path="/" element={<TabContent />} />
+                                </Route>
+                                {/* Public routes */}
+                                <Route element={<PublicRoute><ScreenLayout /></PublicRoute>}>
+                                    <Route path="/auth/callback" element={<AuthCallback />} />
+                                    <Route path="/login" element={<Login />} />
+                                </Route>
+                                <Route path="*" element={<Navigate to="/login" replace />} />
+                            </Routes>
+                        </ProfileProvider>
+                    </AuthProvider>
+                </PanelProvider>
+            </UpdaterProvider>
         </HashRouter>
     )
 }

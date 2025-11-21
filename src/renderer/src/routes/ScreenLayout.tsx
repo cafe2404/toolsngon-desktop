@@ -3,7 +3,7 @@ import logoSvg from '../assets/logo_2.svg'
 import { Outlet } from 'react-router-dom';
 import { Toaster } from "@components/ui/sonner"
 
-const AuthLayout = () => {
+const ScreenLayout = () => {
     return (
         <div className='w-screen h-screen flex items-center justify-center bg-white text-center relative'>
             <div className='absolute top-0 left-0 w-full pr-36'>
@@ -21,4 +21,4 @@ const AuthLayout = () => {
     )
 }
 
-export default AuthLayout;
+export default ScreenLayout;

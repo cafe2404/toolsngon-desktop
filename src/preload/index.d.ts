@@ -1,4 +1,4 @@
-import { Account } from '../types/global'
+import { Account, Cookie, UpdateInfo } from '../types/global'
 
 declare global {
   interface Window {
@@ -34,7 +34,58 @@ declare global {
         clearProfileData: (profileId: string) => Promise<boolean>
         destroy: (id: string, profileId?: string) => Promise<boolean>
         injectScript: (id: string, script: string) => Promise<boolean>
+        toggleFullscreen: (id: string) => Promise<boolean>
         onNewTab: (callback: (url: string) => void) => () => void
+        getCookies: (id: string) => Promise<Cookie[]>
+        getInfo: (id: string) => Promise<{
+          accountId?: number
+          accountName?: string
+          currentUrl: string
+          proxy: {
+            config: string
+            ipAddress: string | null
+            proxyString: string | null
+          }
+          device: {
+            id: number
+            user_agent?: string
+            screen_resolution?: string
+            language?: string
+            timezone?: string
+            platform?: string
+            ip_address: string | null
+            location?: string
+            hardware_concurrency?: number
+            device_memory?: number
+            first_seen?: string
+            last_seen?: string
+            is_active?: boolean
+          } | null
+          fingerprint: Record<string, unknown> | null
+          userAgent: string
+          sessionId: string
+        } | null>
+        getSessionStorage: (id: string) => Promise<Record<string, string> | null>
+        getLocalStorage: (id: string) => Promise<Record<string, string> | null>
+        getIndexedDB: (id: string) => Promise<{
+          available: boolean
+          message?: string
+          error?: string
+        } | null>
+        getWebSQL: (id: string) => Promise<{
+          available: boolean
+          message?: string
+        } | null>
+        getCache: (id: string) => Promise<{
+          available: boolean
+          caches?: Array<{
+            name: string
+            count: number
+            urls: string[]
+          }>
+          message?: string
+          error?: string
+        } | null>
       }
     }
     auth: {
@@ -45,6 +96,14 @@ declare global {
     os: {
       getDeviceUUID: () => Promise<string>
       getAppInfo: () => Promise<{ device_name: string; os: string; app_version: string }>
+    }
+    update: {
+      onUpdateChecking: (callback: () => void) => () => void
+      onUpdateAvailable: (callback: (info: UpdateInfo) => void) => () => void
+      onUpdateNotAvailable: (callback: (info: UpdateInfo) => void) => () => void
+      onUpdateError: (callback: (error: UpdateError) => void) => () => void
+      onUpdateProgress: (callback: (progress: UpdateProgress) => void) => () => void
+      onUpdateDownloaded: (callback: (info: UpdateInfo) => void) => () => void
     }
   }
 }
