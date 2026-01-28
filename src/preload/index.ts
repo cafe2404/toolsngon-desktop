@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, Cookie, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import { Account } from '../types/global'
 
@@ -56,6 +56,7 @@ const api = {
       return () => ipcRenderer.removeListener('new-tab', listener)
     },
     getCookies: (id: string) => ipcRenderer.invoke('bv:get-cookies', { id }),
+    setCookies: (id: string, cookies: Cookie[]) => ipcRenderer.invoke('bv:set-cookies', { id, cookies }),
     getInfo: (id: string) => ipcRenderer.invoke('bv:get-info', { id }),
     getSessionStorage: (id: string) => ipcRenderer.invoke('bv:get-session-storage', { id }),
     getLocalStorage: (id: string) => ipcRenderer.invoke('bv:get-local-storage', { id }),

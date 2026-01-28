@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
-import { ArrowLeft, ArrowRight, RotateCw, XIcon, Fingerprint, Home, BellIcon, Settings, LogOutIcon, LoaderCircle, Fullscreen, Cookie } from "lucide-react"
+import { ArrowLeft, ArrowRight, RotateCw, XIcon, Home, BellIcon, Settings, LogOutIcon, LoaderCircle, Fullscreen, CookieIcon, BracesIcon, InfoIcon } from "lucide-react"
 import { useProfiles } from "@renderer/contexts/ProfileContext"
 import { useAuth } from "../contexts/AuthContext"
 import { useCallback, useEffect, useState } from "react"
@@ -21,7 +21,7 @@ const TabControl = () => {
   const [notifications, setNotifications] = useState<Notify[] | null>()
   const [loadingNotify, setLoadingNotify] = useState(false)
   const [url, setUrl] = useState(currentTab?.currentUrl)
-
+  const [openNotifications, setOpenNotifications] = useState(false)
   useEffect(() => {
     if (currentTab?.currentUrl !== url) {
       setUrl(currentTab?.currentUrl)
@@ -82,6 +82,12 @@ const TabControl = () => {
     if (!currentTab) return;
     injectScript(currentTab?.id, currentProfile.account.script)
   }
+  const handleSetCookies = useCallback(async () => {
+    if (!currentProfile?.account?.cookies) return;
+    if (!currentTab) return;
+    await window.api.browserView?.setCookies(currentTab.id, currentProfile.account.cookies)
+  }, [currentProfile, currentTab]);
+
   const handleAddNewTab = useCallback((url, title) => {
     if (!currentProfile) return;
     const newTabId = `tab_${Date.now()}`
@@ -109,7 +115,19 @@ const TabControl = () => {
   }
 
   useEffect(() => {
-  })
+    if (currentProfile?.id === '1') {
+      getNotifications()
+      if (notifications && notifications.length > 0) {
+        setOpenNotifications(true)
+      }
+    }
+  }, [currentProfile?.id])
+  useEffect(() => {
+    if (openNotifications) {
+      getNotifications()
+    }
+  }, [openNotifications])
+
   if (!currentProfile) return <></>;
   return (
     <div className="flex flex-col">
@@ -138,18 +156,29 @@ const TabControl = () => {
           <button disabled={currentTab?.id === '1'} onClick={handleOpenHome} className={`h-8 w-8 min-w-8 rounded-lg text-slate-800 flex items-center justify-center duration-300 ${currentTab?.id !== '1' ? 'hover:bg-slate-200' : 'opacity-50 cursor-not-allowed'} `}>
             <Home size={16}></Home>
           </button>
-          <button disabled={currentTab?.id === '1'} onClick={handleInjectScript} className={`h-8 w-8 min-w-8 rounded-lg text-slate-800 flex items-center justify-center duration-300 ${currentTab?.id !== '1' ? 'hover:bg-slate-200' : 'opacity-50 cursor-not-allowed'} `}>
-            <Fingerprint size={16}></Fingerprint>
-          </button>
+          {
+            currentProfile?.account?.script &&
+            <button disabled={currentTab?.id === '1'} onClick={handleInjectScript} className={`h-8 w-8 min-w-8 rounded-lg text-slate-800 flex items-center justify-center duration-300 ${currentTab?.id !== '1' ? 'hover:bg-slate-200' : 'opacity-50 cursor-not-allowed'} `}>
+              <BracesIcon size={16}></BracesIcon>
+            </button>
+          }
+          {
+            currentProfile?.account?.cookies &&
+            <button disabled={currentTab?.id === '1'} onClick={handleSetCookies} className={`h-8 w-8 min-w-8 rounded-lg text-slate-800 flex items-center justify-center duration-300 ${currentTab?.id !== '1' ? 'hover:bg-slate-200' : 'opacity-50 cursor-not-allowed'} `}>
+              <CookieIcon size={16}></CookieIcon>
+            </button>
+          }
         </div>
         <div className="w-full flex items-center justify-center">
           <div className="relative focus-within:border-blue-500 border-2 border-slate-200 bg-slate-200 w-full h-8 rounded-lg gap-1 no-drag flex items-center px-4 py-1">
             <input readOnly={currentProfile.id === '1' || !currentProfile?.account?.is_edit_omnibox} type="text" onKeyDown={handleKeyDown} className="bg-transparent focus:outline-none text-slate-800 text-sm w-full pr-2" value={url} onChange={(e) => setUrl(e.target.value)} name="" id="" />
           </div>
         </div>
-        <button disabled={currentTab?.id === '1'} onClick={togglePanel} className={`h-8 w-8 min-w-8 rounded-lg text-slate-800 flex items-center justify-center duration-300 ${currentTab?.id !== '1' ? 'hover:bg-slate-200' : 'opacity-50 cursor-not-allowed'} `}>
-          <Cookie size={16} />
-        </button>
+        {user?.is_superuser && (
+          <button disabled={currentTab?.id === '1'} onClick={togglePanel} className={`h-8 w-8 min-w-8 rounded-lg text-slate-800 flex items-center justify-center duration-300 ${currentTab?.id !== '1' ? 'hover:bg-slate-200' : 'opacity-50 cursor-not-allowed'} `}>
+            <InfoIcon size={16} />
+          </button>
+        )}
         <button disabled={currentTab?.id === '1'} onClick={handleToggleFullScreen} className={`h-8 w-8 min-w-8 rounded-lg text-slate-800 flex items-center justify-center duration-300 ${currentTab?.id !== '1' ? 'hover:bg-slate-200' : 'opacity-50 cursor-not-allowed'} `}>
           <Fullscreen size={16} />
         </button>
@@ -179,8 +208,8 @@ const TabControl = () => {
               ))}
             </div>
             <div className="flex gap-2 items-center">
-              <DropdownMenu onOpenChange={(open) => open && getNotifications()}>
-                <DropdownMenuTrigger asChild disabled={loadingNotify} >
+              <DropdownMenu open={openNotifications} onOpenChange={(open) => setOpenNotifications(open)}>
+                <DropdownMenuTrigger asChild disabled={loadingNotify} onClick={() => setOpenNotifications(!openNotifications)}>
                   <div className={`${loadingNotify && 'pointer-events-none cursor-not-allowed'}size-7 hover:bg-slate-200 relative duration-300 text-slate-600 hover:text-slate-800 rounded-md flex items-center justify-center`}>
                     {loadingNotify ?
                       <LoaderCircle className="animate-spin text-slate-800" size={16}></LoaderCircle>

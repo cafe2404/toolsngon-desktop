@@ -9,7 +9,8 @@ import {
   protocol,
   clipboard,
   dialog,
-  globalShortcut
+  globalShortcut,
+  Cookie
 } from 'electron'
 import path, { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -302,7 +303,7 @@ if (!gotTheLock) {
           }
           profileViews.get(profileId)!.add(id)
         }
-        const session = view.webContents.session
+
         if (account?.device?.ip_address) {
           // Ví dụ: "http://gbpTxemouE:u0CxVMNM4aob777041@103.161.179.43:49697"
           const proxy = account.device.ip_address.trim()
@@ -329,7 +330,12 @@ if (!gotTheLock) {
             }
           }
         }
-        if (account?.cookies) {
+
+        if (account?.device?.user_agent) {
+          await view.webContents.setUserAgent(account.device.user_agent)
+        }
+        const session = view.webContents.session
+        if (session && account?.cookies) {
           await Promise.all(
             account?.cookies.map((c) => {
               const isHost = c.name.startsWith('__Host-')
@@ -351,9 +357,7 @@ if (!gotTheLock) {
                 .catch((err) => console.error('Set cookie fail', c.name, err))
             })
           )
-        }
-        if (account?.device?.user_agent) {
-          await view.webContents.setUserAgent(account.device.user_agent)
+          console.log('Set cookies successfully')
         }
         if (account?.extensions) {
           for (const ext of account.extensions) {
@@ -595,7 +599,39 @@ if (!gotTheLock) {
       }
       return true
     })
-
+    ipcMain.handle('bv:set-cookies', async (_e, { id, cookies }: { id: string, cookies: Cookie[] }) => {
+      const v = getView(id)
+      const session = v?.webContents.session
+      if (session && cookies) {
+        await Promise.all(
+          cookies.map((c) => {
+            const isHost = c.name.startsWith('__Host-')
+            const isSecurePrefix = c.name.startsWith('__Secure-')
+            const cookieObj: Electron.CookiesSetDetails = {
+              url: `${c.secure || isHost || isSecurePrefix ? 'https' : 'http'}://${(c.domain ?? '').replace(/^\./, '')}${c.path || '/'}`,
+              name: c.name,
+              value: c.value,
+              path: isHost ? '/' : c.path || '/',
+              secure: isHost || isSecurePrefix ? true : c.secure || false,
+              httpOnly: c.httpOnly || false,
+              expirationDate: c.expirationDate
+            }
+            if (!isHost && c.domain) {
+              cookieObj.domain = c.domain
+            }
+            session.cookies
+              .set(cookieObj)
+              .catch((err) => console.error('Set cookie fail', c.name, err))
+          })
+        )
+        console.log('Set cookies successfully')
+        v?.webContents.reload()
+      } else {
+        console.error('Set cookies failed')
+        v?.webContents.reload()
+      }
+      return true
+    })
     ipcMain.handle('bv:open-chrome', async (_e, { id, url, account }) => {
       return await launchChrome({ id, url, account })
     })
@@ -878,7 +914,7 @@ if (!gotTheLock) {
 
       // Get proxy information
       const proxyConfig = await session.resolveProxy(currentUrl || 'https://www.google.com')
-      
+
       // Extract IP from proxy if available
       let ipAddress = account?.device?.ip_address || null
       if (ipAddress) {

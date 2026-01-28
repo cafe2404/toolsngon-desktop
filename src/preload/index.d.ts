@@ -18,6 +18,7 @@ declare global {
           profileId?: string
         ) => Promise<boolean>
         openChrome: (id: string, url?: string, account?: Account) => Promise<boolean>
+        setCookies: (id: string, cookies: Cookie[]) => Promise<boolean>
         setBounds: (
           id: string,
           bounds: { x: number; y: number; width: number; height: number }

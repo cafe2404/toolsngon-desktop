@@ -142,7 +142,7 @@ const TabInfo = (): React.JSX.Element => {
     );
 
     return (
-        <div className="w-96 min-w-96 h-full bg-white border-l border-slate-200 overflow-y-auto animate-in">
+        <div className="w-1/2 min-w-1/2 h-full bg-white border-l border-slate-200 overflow-y-auto animate-in">
             <div className="p-4">
                 <h1 className="text-md mb-4 font-medium text-slate-800">Thông tin browser</h1>
 
@@ -172,13 +172,12 @@ const TabInfo = (): React.JSX.Element => {
                         {viewInfo.fingerprint && (
                             <InfoSection data={viewInfo.fingerprint} copyId="fingerprint" title="Browser Fingerprint" />
                         )}
-
-                        <InfoSection data={indexedDB} copyId="indexeddb" title="IndexedDB" />
-                        <InfoSection data={webSQL} copyId="websql" title="Web SQL" />
-                        <InfoSection data={cache} copyId="cache" title="Cache" />
                         <InfoSection data={cookies} copyId="cookies" title="Cookies" />
                         <InfoSection data={sessionStorage} copyId="session" title="Session Storage" />
                         <InfoSection data={localStorage} copyId="local" title="Local Storage" />
+                        <InfoSection data={indexedDB} copyId="indexeddb" title="IndexedDB" />
+                        <InfoSection data={webSQL} copyId="websql" title="Web SQL" />
+                        <InfoSection data={cache} copyId="cache" title="Cache" />
                     </div>
 
                 ) : (

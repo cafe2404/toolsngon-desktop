@@ -1,6 +1,6 @@
 {
   "name": "toolsngon",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "Ứng dụng chia sẻ tài khoản dành cho bạn",
   "main": "./out/main/index.js",
   "author": "cafedev24@gmail.com",

@@ -47,7 +47,7 @@ function AppLayout(): React.JSX.Element {
                 <div className="w-full h-full overflow-hidden bg-white">
                     <Outlet />
                 </div>
-                {currentProfile && currentProfile.id !== '1' && isOpen &&
+                {currentProfile && currentProfile.id !== '1' && isOpen && user?.is_superuser &&
                     <TabInfo />
                 }
             </div>
