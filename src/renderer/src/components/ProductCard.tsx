@@ -111,7 +111,7 @@ const ProductCard = ({ item }: { item: UserProduct }): JSX.Element => {
                                         account.is_active &&
                                             <div className={`absolute size-3 top-0 left-0 rounded-full animate-ping bg-green-500`}></div>
                                     }
-                                    <div className={`relative size-3 ${account.is_active ? 'bg-green-500' : 'bg-red-500'} rounded-full z-10`}></div>
+                                    <div className={`relative size-3 ${account.is_active ? 'bg-green-500' : 'bg-red-500'} rounded-full`}></div>
                                 </div>
                             </div>
                         </div>

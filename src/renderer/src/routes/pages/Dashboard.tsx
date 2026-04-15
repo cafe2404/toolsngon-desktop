@@ -1,5 +1,5 @@
-import { Ban, CheckCheck, ChevronDown, Copy, Headset, Search } from "lucide-react";
-import { JSX, useEffect, useMemo, useState, type ChangeEvent, type MouseEvent } from "react";
+import { ArrowUp, Ban, CheckCheck, ChevronDown, Copy, Headset, Search } from "lucide-react";
+import { JSX, useEffect, useMemo, useRef, useState, type ChangeEvent, type MouseEvent } from "react";
 import ProductCard from "@renderer/components/ProductCard";
 import { useProfiles } from "@renderer/contexts/ProfileContext";
 import { useAuth } from "@renderer/contexts/AuthContext";
@@ -22,8 +22,10 @@ export default function Dashboard(): JSX.Element {
         os: "",
         app_version: ""
     })
+    const containerRef = useRef<HTMLDivElement>(null)
     const [deviceUUID, setDeviceUUID] = useState("")
     const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set())
+    const [showScrollTop, setShowScrollTop] = useState(false)
     const { currentTab } = useProfiles()
 
     const handleCopy = async () => {
@@ -107,6 +109,11 @@ export default function Dashboard(): JSX.Element {
             return next
         })
     }
+
+    const handleScrollToTop = (): void => {
+        containerRef.current?.scrollTo({ top: 0, behavior: "smooth" })
+    }
+
     const getAppInfo = async (): Promise<void> => {
         const appInfo = await window.os.getAppInfo()
         setAppInfo(appInfo)
@@ -116,8 +123,21 @@ export default function Dashboard(): JSX.Element {
     useEffect(() => {
         getAppInfo()
     }, [])
+
+    useEffect(() => {
+        const container = containerRef.current
+        if (!container) return
+
+        const handleScroll = (): void => {
+            setShowScrollTop(container.scrollTop > 200)
+        }
+
+        handleScroll()
+        container.addEventListener("scroll", handleScroll)
+        return () => container.removeEventListener("scroll", handleScroll)
+    }, [])
     return (
-        <div className={`w-full flex flex-col gap-6 h-full relative overflow-y-auto`} style={{ display: currentTab?.id === "1" ? "flex" : "none" }}   >
+        <div ref={containerRef} className={`w-full flex flex-col gap-6 h-full relative overflow-y-auto`} style={{ display: currentTab?.id === "1" ? "flex" : "none" }}   >
             {appSetting && appSetting?.top_banner &&
                 <div className="">
                     <div
@@ -126,7 +146,7 @@ export default function Dashboard(): JSX.Element {
                 </div>
             }
             <div className="px-6 flex-1">
-                <div className="flex flex-col gap-2 py-4 sticky top-0 z-10 bg-white">
+                <div className="flex flex-col gap-2 py-4 s bg-white">
                     <div className="flex items-center gap-2 w-full">
                         <div className="relative border border-slate-200 w-full h-10 rounded-lg gap-1 no-drag flex items-center px-1 py-1">
                             <button className='px-2 py-0.5 h-full rounded-lg hover:bg-slate-200 text-slate-800 flex items-center justify-center duration-300'>
@@ -249,6 +269,14 @@ export default function Dashboard(): JSX.Element {
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
+            {showScrollTop && (
+                <button
+                    onClick={handleScrollToTop}
+                    className="fixed bottom-16 right-6 z-40 h-10 w-10 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-md hover:bg-blue-600 duration-300"
+                >
+                    <ArrowUp size={18} />
+                </button>
+            )}
         </div>
     )
 }
