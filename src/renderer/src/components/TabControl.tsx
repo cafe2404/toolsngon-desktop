@@ -133,9 +133,9 @@ const TabControl = () => {
     <div className="flex flex-col">
       <div className="w-full flex items-center gap-2 pl-2 bg-white pr-3.5 py-1.5 border-b border-slate-200 rounded-t-2xl">
         <div className="flex items-center gap-1">
-          <button onClick={handleSwitchToDashboard} className={`h-8 text-xs gap-1.5 rounded-lg text-slate-800 px-2 flex items-center justify-center hover:bg-slate-200 duration-300`}>
+          <button onClick={handleSwitchToDashboard} className={`h-8 whitespace-nowrap text-xs gap-1.5 rounded-lg text-slate-800 px-2 flex items-center justify-center hover:bg-slate-200 duration-300`}>
             <img className="size-4 min-w-4 object-cover" src={logoSvg}></img>
-            Dashboard
+            Quản lý tài khoản
           </button>
           <button onClick={() => currentTab && goBack(currentTab.id)} disabled={!currentTab?.canGoBack} className={`h-8 w-8 min-w-8 rounded-lg text-slate-800 flex items-center justify-center duration-300 ${currentTab?.canGoBack ? 'hover:bg-slate-200' : 'opacity-50 cursor-not-allowed'}`}>
             <ArrowLeft size={16}></ArrowLeft>

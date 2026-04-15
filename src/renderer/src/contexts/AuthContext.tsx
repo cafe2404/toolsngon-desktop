@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { api } from '@renderer/lib/axios'
-import type { AppSetting, UserProduct } from 'src/types/global'
+import type { AppSetting, Category, UserProduct } from 'src/types/global'
 import { toast } from "sonner"
 
 
@@ -29,6 +29,10 @@ type AuthContextType = {
     userProductsLoading: boolean
     userProductsError: string | null
     loadUserProducts: () => Promise<void>
+    categories: Category[]
+    loadCategories: () => Promise<void>
+    categoriesLoading: boolean
+    categoriesError: string | null
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -43,6 +47,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [userProductsError, setUserProductsError] = useState<string | null>(null)
     const [sessionId, setSessionId] = useState<string | null>(null)
     const [appSetting, setAppSetting] = useState<AppSetting | null>(null)
+    const [categories, setCategories] = useState<Category[]>([])
+    const [categoriesLoading, setCategoriesLoading] = useState<boolean>(false)
+    const [categoriesError, setCategoriesError] = useState<string | null>(null)
     const isAuthenticated = !!accessToken
 
     const getAppSetting = async () => {
@@ -119,6 +126,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     }, [clearAuth])
 
+    const loadCategories = useCallback(async () => {
+        if (!accessToken) return
+        try {
+            setCategoriesLoading(true)
+            setCategoriesError(null)
+            const res = await api.get<Category[]>('/api/category-groups/')
+            setCategories(res.data)
+        }
+        catch (error) {
+            setCategoriesError('Không thể tải danh sách danh mục')
+            console.error(error)
+            throw error
+        }
+        finally {
+            setCategoriesLoading(false)
+        }
+    }, [accessToken])
 
     useEffect(() => {
         (async () => {
@@ -129,6 +153,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     setAccessToken(stored.access)
                     try {
                         await fetchMe()
+                        await loadCategories()
                         await loadUserProducts()
                         await getAppSetting()
                     } catch {
@@ -139,7 +164,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setIsLoading(false)
             }
         })()
-    }, [fetchMe, loadUserProducts, refresh, logout])
+    }, [fetchMe, loadUserProducts, refresh, logout, loadCategories])
 
     useEffect(() => {
 
@@ -237,6 +262,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userProductsLoading,
         userProductsError,
         loadUserProducts,
+        categories,
+        loadCategories,
+        categoriesLoading,
+        categoriesError,
     }), [user, appSetting, accessToken, refreshToken, isLoading, isAuthenticated, loginWithCode, logout, refresh, userProducts, userProductsLoading, userProductsError, loadUserProducts])
 
     return (

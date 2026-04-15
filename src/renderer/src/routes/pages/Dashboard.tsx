@@ -1,5 +1,5 @@
-import { Ban, CheckCheck, Copy, Headset, Search } from "lucide-react";
-import { JSX, useEffect, useMemo, useState, type ChangeEvent } from "react";
+import { Ban, CheckCheck, ChevronDown, Copy, Headset, Search } from "lucide-react";
+import { JSX, useEffect, useMemo, useState, type ChangeEvent, type MouseEvent } from "react";
 import ProductCard from "@renderer/components/ProductCard";
 import { useProfiles } from "@renderer/contexts/ProfileContext";
 import { useAuth } from "@renderer/contexts/AuthContext";
@@ -13,7 +13,7 @@ import {
 
 
 export default function Dashboard(): JSX.Element {
-    const { userProducts, userProductsLoading, userProductsError, appSetting } = useAuth()
+    const { userProducts, userProductsLoading, userProductsError, appSetting, categories } = useAuth()
     const [query, setQuery] = useState<string>("")
     const [copyUUID, setCopyUUID] = useState<'copy' | 'copied' | 'error'>('copy')
 
@@ -23,6 +23,7 @@ export default function Dashboard(): JSX.Element {
         app_version: ""
     })
     const [deviceUUID, setDeviceUUID] = useState("")
+    const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set())
     const { currentTab } = useProfiles()
 
     const handleCopy = async () => {
@@ -56,6 +57,56 @@ export default function Dashboard(): JSX.Element {
             )
         })
     }, [userProducts, query])
+
+    const groupedItems = useMemo(() => {
+        const fallbackGroupName = "Khác"
+        const groupedMap = new Map<string, { name: string; sectionId: string; items: typeof filteredItems }>()
+        const categoryMap = new Map(categories.map((category) => [category.name.trim().toLowerCase(), category]))
+
+        for (const item of filteredItems) {
+            const categoryName = item.account_group?.category?.name?.trim()
+            const groupName = categoryName && categoryName.length > 0 ? categoryName : fallbackGroupName
+            const key = groupName.toLowerCase()
+            const matchedCategory = categoryMap.get(key)
+            const sectionId = matchedCategory ? `cattegory-${matchedCategory.id}` : "cattegory-khac"
+
+            if (!groupedMap.has(key)) {
+                groupedMap.set(key, { name: groupName, sectionId, items: [] })
+            }
+
+            groupedMap.get(key)?.items.push(item)
+        }
+
+        const sortedByCategoryOrder = categories
+            .map((category) => groupedMap.get(category.name.trim().toLowerCase()))
+            .filter((group): group is { name: string; sectionId: string; items: typeof filteredItems } => Boolean(group))
+
+        const otherGroups = Array.from(groupedMap.values()).filter(
+            (group) => !categories.some((category) => category.name.trim().toLowerCase() === group.name.toLowerCase())
+        )
+
+        return [...sortedByCategoryOrder, ...otherGroups]
+    }, [filteredItems, categories])
+
+    const handleScrollToCategory = (event: MouseEvent<HTMLAnchorElement>, sectionId: string): void => {
+        event.preventDefault()
+        const section = document.getElementById(sectionId)
+        if (!section) return
+        section.scrollIntoView({ behavior: "smooth", block: "start" })
+        window.history.replaceState(null, "", `#${sectionId}`)
+    }
+
+    const handleToggleSection = (sectionId: string): void => {
+        setCollapsedSections((prev) => {
+            const next = new Set(prev)
+            if (next.has(sectionId)) {
+                next.delete(sectionId)
+            } else {
+                next.add(sectionId)
+            }
+            return next
+        })
+    }
     const getAppInfo = async (): Promise<void> => {
         const appInfo = await window.os.getAppInfo()
         setAppInfo(appInfo)
@@ -68,15 +119,15 @@ export default function Dashboard(): JSX.Element {
     return (
         <div className={`w-full flex flex-col gap-6 h-full relative overflow-y-auto`} style={{ display: currentTab?.id === "1" ? "flex" : "none" }}   >
             {appSetting && appSetting?.top_banner &&
-                <div className="sticky top-0 z-50">
+                <div className="">
                     <div
                         dangerouslySetInnerHTML={{ __html: appSetting?.top_banner }}
                     ></div>
                 </div>
             }
-            <div className="px-6 pt-6 flex-1">
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-2 w-2xl">
+            <div className="px-6 flex-1">
+                <div className="flex flex-col gap-2 py-4 sticky top-0 z-10 bg-white">
+                    <div className="flex items-center gap-2 w-full">
                         <div className="relative border border-slate-200 w-full h-10 rounded-lg gap-1 no-drag flex items-center px-1 py-1">
                             <button className='px-2 py-0.5 h-full rounded-lg hover:bg-slate-200 text-slate-800 flex items-center justify-center duration-300'>
                                 <Search size={16} />
@@ -89,6 +140,26 @@ export default function Dashboard(): JSX.Element {
                                 onChange={(e: ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)}
                             />
                         </div>
+                    </div>
+                    <div className="flex items-center gap-2 w-full">
+
+                        {categories.map(category => (
+                            <a
+                                href={`#cattegory-${category.id}`}
+                                key={category.id}
+                                onClick={(event) => handleScrollToCategory(event, `cattegory-${category.id}`)}
+                                className="bg-white rounded-md text-sm hover:border-slate-500 gap-2 px-2 py-1.5 flex items-center justify-center text-slate-600 duration-300 border border-slate-200"
+                            >
+                                <span className="text-sm">{category.name}</span>
+                            </a>
+                        ))}
+                        <a
+                            href="#cattegory-khac"
+                            onClick={(event) => handleScrollToCategory(event, "cattegory-khac")}
+                            className="bg-white rounded-md text-sm hover:border-slate-500 gap-2 px-2 py-1.5 flex items-center justify-center text-slate-600 duration-300 border border-slate-200"
+                        >
+                            <span className="text-sm">Khác</span>
+                        </a>
                     </div>
                 </div>
                 {userProductsLoading && (
@@ -103,9 +174,29 @@ export default function Dashboard(): JSX.Element {
                         {filteredItems.length === 0 ? (
                             <div className='text-sm text-slate-600'>Không có kết quả phù hợp</div>
                         ) : (
-                            <div className={'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4'}>
-                                {filteredItems.map(item => (
-                                    <ProductCard key={item.id} item={item} />
+                            <div className="flex flex-col gap-6">
+                                {groupedItems.map((group) => (
+                                    <section id={group.sectionId} key={group.name} className="flex flex-col gap-3">
+                                        <div className="flex items-center gap-2">
+                                            <h2 className="text-base font-semibold text-slate-800">{group.name}</h2>
+                                            <button
+                                                onClick={() => handleToggleSection(group.sectionId)}
+                                                className="text-sm text-slate-600 p-2 hover:text-slate-800 rounded-md flex items-center justify-center duration-300 hover:bg-slate-200"
+                                            >
+                                                <ChevronDown
+                                                    size={16}
+                                                    className={`duration-300 ${collapsedSections.has(group.sectionId) ? "-rotate-90" : "rotate-0"}`}
+                                                />
+                                            </button>
+                                        </div>
+                                        {!collapsedSections.has(group.sectionId) && (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
+                                                {group.items.map(item => (
+                                                    <ProductCard key={item.id} item={item} />
+                                                ))}
+                                            </div>
+                                        )}
+                                    </section>
                                 ))}
                             </div>
                         )}

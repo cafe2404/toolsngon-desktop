@@ -40,6 +40,7 @@ export type Account = {
   open_chrome?: boolean
   is_create_tab?: boolean
   is_edit_omnibox?: boolean
+  is_active?: boolean
 }
 
 export type AccountGroup = {
@@ -47,6 +48,7 @@ export type AccountGroup = {
   name: string
   type: string
   accounts: Account[]
+  category?: Category | null
 }
 export type Product = {
   id: number
@@ -112,4 +114,10 @@ export type UpdateProgress = {
 export type UpdateError = {
   message: string
   stack?: string
+}
+
+
+export type Category = {
+  id: number
+  name: string
 }
