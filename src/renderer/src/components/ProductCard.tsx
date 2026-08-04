@@ -1,14 +1,7 @@
-import { CheckCheckIcon, ChevronDown, Clock, Hash, LoaderCircle, UserIcon } from "lucide-react";
+import { Clock, Hash, LoaderCircle } from "lucide-react";
 import { Account, UserProduct } from "src/types/global";
 import { useProfiles } from "../contexts/ProfileContext";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuShortcut,
-    DropdownMenuTrigger,
-} from "@components/ui/dropdown-menu"
+
 import { JSX, useState } from "react";
 
 
@@ -104,12 +97,12 @@ const ProductCard = ({ item }: { item: UserProduct }): JSX.Element => {
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div className="flex items-center duration-300 absolute top-4 right-4">
                                 <div className="relative size-3 flex items-center justify-center">
                                     {
                                         account.is_active &&
-                                            <div className={`absolute size-3 top-0 left-0 rounded-full animate-ping bg-green-500`}></div>
+                                        <div className={`absolute size-3 top-0 left-0 rounded-full animate-ping bg-green-500`}></div>
                                     }
                                     <div className={`relative size-3 ${account.is_active ? 'bg-green-500' : 'bg-red-500'} rounded-full`}></div>
                                 </div>

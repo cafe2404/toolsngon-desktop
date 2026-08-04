@@ -9,11 +9,13 @@ files:
   - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
   - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+
 asarUnpack:
   - resources/**
 win:
   target: nsis
   executableName: toolsngon
+  icon: resources/icon.ico
   signtoolOptions:
     publisherName: 'CÔNG TY CỔ PHẦN GIẢI PHÁP ĐÔNG DƯƠNG'
     certificateSha1: 'F33A0681FF0EE3FADBA098CF0C9E24228942651F'
@@ -24,6 +26,9 @@ nsis:
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
+  installerIcon: resources/icon.ico
+  uninstallerIcon: resources/icon.ico
+  installerHeaderIcon: resources/icon.ico
 mac:
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
