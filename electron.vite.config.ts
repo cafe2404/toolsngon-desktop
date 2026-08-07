@@ -2,6 +2,19 @@ import { resolve } from 'path'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { transformWithEsbuild } from 'vite'
+
+const reactNativeMarkdownDisplayJsx = () => ({
+  name: 'react-native-markdown-display-jsx',
+  enforce: 'pre' as const,
+  transform(code: string, id: string) {
+    if (!id.includes('react-native-markdown-display') || !id.endsWith('.js')) return null
+    return transformWithEsbuild(code, id, {
+      loader: 'jsx',
+      jsx: 'automatic'
+    })
+  }
+})
 
 export default defineConfig({
   main: {
@@ -24,9 +37,10 @@ export default defineConfig({
         '@renderer': resolve('src/renderer/src'),
         '@components': resolve('src/renderer/src/components'),
         '@routes': resolve('src/renderer/src/routes'),
-        '@contexts': resolve('src/renderer/src/contexts')
+        '@contexts': resolve('src/renderer/src/contexts'),
+        'react-native': 'react-native-web'
       }
     },
-    plugins: [react(), tailwindcss()]
+    plugins: [reactNativeMarkdownDisplayJsx(), react(), tailwindcss()]
   }
 })

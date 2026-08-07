@@ -13,6 +13,7 @@ import DeepLinkListener from './pages/DeepLinkListener'
 import TabListener from './pages/TabListener'
 import Updater from './pages/Updater'
 import { UpdaterProvider } from '../contexts/UpdaterContext'
+import SupportGuide from './pages/SupportGuide'
 
 function PrivateRoute({ children }: { children: React.JSX.Element }): React.JSX.Element | null {
     const { isAuthenticated, isLoading } = useAuth()
@@ -38,6 +39,9 @@ function AppRoutes(): React.JSX.Element {
                                 {/* Updater*/}
                                 <Route element={<ScreenLayout />}>
                                     <Route path="/updater" element={<Updater />} />
+                                </Route>
+                                <Route element={<PrivateRoute><ScreenLayout /></PrivateRoute>}>
+                                    <Route path="/support-guide" element={<SupportGuide />} />
                                 </Route>
                                 {/* Private routes */}
                                 <Route element={<PrivateRoute><AppLayout /></PrivateRoute>}>

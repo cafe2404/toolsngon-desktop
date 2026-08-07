@@ -142,7 +142,7 @@ const TabInfo = (): React.JSX.Element => {
     );
 
     return (
-        <div className="w-1/2 min-w-1/2 h-full bg-white border-l border-slate-200 overflow-y-auto animate-in">
+        <div className="w-1/2 min-w-1/2 h-full bg-white border-l border-slate-200 overflow-y-auto panel-slide-in">
             <div className="p-4">
                 <h1 className="text-md mb-4 font-medium text-slate-800">Thông tin browser</h1>
 

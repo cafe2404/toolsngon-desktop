@@ -14,6 +14,7 @@ import {
 } from 'electron'
 import path, { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import { ElectronChromeExtensions } from 'electron-chrome-extensions'
 import icon from '../../resources/icon.png?asset'
 import { saveTokens, getAccessToken, getRefreshToken, clearTokens, ensureDeviceID } from './auth'
 import { autoUpdater } from 'electron-updater'
@@ -22,7 +23,7 @@ import { prepareExtension } from './utils'
 import { Account } from '../types/global'
 import launchChrome from './openChrome'
 import * as ChromeLauncher from 'chrome-launcher'
-import fs from 'fs-extra' // hoặc 'fs' bình thường nhưng fs-extra tiện hơn
+import fs from 'fs'
 import https from 'https'
 import http from 'http'
 import { blockedUrlsManager } from './blockedUrls'
@@ -31,6 +32,22 @@ let mainWindow
 let pendingDeepLink: string | null = null
 // Height of the title bar overlay to keep content below it when sizing views
 const VIEW_TOP_OFFSET = 44
+type ExtensionTabCreateDetails = {
+  url?: string
+  active?: boolean
+}
+
+type SupportGuidePayload = {
+  title: string
+  description?: string
+  contentMarkdown?: string
+  guideUrl?: string
+  productTitle?: string
+  productLogoUrl?: string
+}
+
+let supportGuidePayload: SupportGuidePayload | null = null
+let supportGuideWindow: BrowserWindow | null = null
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'chrome-extension', privileges: { secure: true, standard: true } }
@@ -82,6 +99,8 @@ function createWindow(): void {
     return { action: 'deny' }
   })
 
+  ElectronChromeExtensions.handleCRXProtocol(mainWindow.webContents.session)
+
   // HMR for renderer base on electron-vite cli.
   // Load the remote URL for development or the local html file for production.
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
@@ -89,6 +108,51 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+}
+
+function loadRendererRoute(window: BrowserWindow, route: string): void {
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    window.loadURL(`${process.env['ELECTRON_RENDERER_URL']}#${route}`)
+  } else {
+    window.loadFile(join(__dirname, '../renderer/index.html'), { hash: route.replace(/^\//, '') })
+  }
+}
+
+function openSupportGuideWindow(payload: SupportGuidePayload): boolean {
+  supportGuidePayload = payload
+  if (supportGuideWindow && !supportGuideWindow.isDestroyed()) {
+    supportGuideWindow.focus()
+    supportGuideWindow.webContents.send('support-guide:payload-updated', supportGuidePayload)
+    return true
+  }
+
+  supportGuideWindow = new BrowserWindow({
+    width: 1050,
+    height: 780,
+    minWidth: 560,
+    minHeight: 620,
+    show: false,
+    autoHideMenuBar: true,
+    title: payload.title || 'Hướng dẫn hỗ trợ',
+    parent: mainWindow || undefined,
+    modal: false,
+    ...(process.platform === 'linux' ? { icon } : {}),
+    icon,
+    webPreferences: {
+      devTools: is.dev,
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false,
+      webviewTag: false
+    }
+  })
+
+  supportGuideWindow.on('ready-to-show', () => supportGuideWindow?.show())
+  supportGuideWindow.on('closed', () => {
+    supportGuideWindow = null
+    supportGuidePayload = null
+  })
+  loadRendererRoute(supportGuideWindow, '/support-guide')
+  return true
 }
 
 // đảm bảo chỉ chạy 1 instance
@@ -124,6 +188,10 @@ if (!gotTheLock) {
     ipcMain.handle('open-external', async (_, url) => {
       await shell.openExternal(url)
     })
+    ipcMain.handle('support-guide:open', async (_, payload: SupportGuidePayload) => {
+      return openSupportGuideWindow(payload)
+    })
+    ipcMain.handle('support-guide:get-payload', async () => supportGuidePayload)
     ipcMain.handle('auth:save', async (_, { access, refresh }) => {
       await saveTokens(access, refresh)
       return true
@@ -166,8 +234,8 @@ if (!gotTheLock) {
 
         for (const v of views.values()) {
           try {
-            if (mainWindow?.getBrowserView() === v)
-              mainWindow.setBrowserView(null as unknown as BrowserView)
+            ElectronChromeExtensions.fromSession(v.webContents.session)?.removeTab(v.webContents)
+            removeBrowserView(v)
           } catch {
             /* noop */
           }
@@ -178,6 +246,9 @@ if (!gotTheLock) {
           }
         }
         views.clear()
+        viewProfiles.clear()
+        closeExtensionPanel()
+        extensionPaths.clear()
 
         return true
       } catch {
@@ -230,10 +301,177 @@ if (!gotTheLock) {
     const views = new Map<string, BrowserView>() // key: tabId, value: BrowserView
     const profileViews = new Map<string, Set<string>>() // key: profileId, value: Set<tabIds>
     const viewAccounts = new Map<string, Account>() // key: tabId, value: Account - store account data for later access
+    const viewProfiles = new Map<string, string>() // key: tabId, value: profileId
     const getView = (id: string): BrowserView | undefined => views.get(id)
     // Store previous bounds to support fullscreen toggle per BrowserView
     const viewPreviousBounds = new Map<string, Electron.Rectangle>()
     let activeView: BrowserView | null = null
+    const extensionPanelViews = new Map<string, BrowserView>() // key: profileId:extensionId
+    const extensionPaths = new Map<string, string>() // key: profileId:extensionId
+    const chromeExtensionManagers = new Map<string, ElectronChromeExtensions>() // key: profile partition
+
+    const isViewAttached = (view: BrowserView): boolean => {
+      try {
+        return mainWindow?.getBrowserViews?.().includes(view) === true
+      } catch {
+        return false
+      }
+    }
+
+    const addBrowserView = (view: BrowserView): void => {
+      try {
+        if (!isViewAttached(view)) mainWindow?.addBrowserView(view)
+      } catch {
+        /* noop */
+      }
+    }
+
+    const removeBrowserView = (view: BrowserView): void => {
+      try {
+        if (isViewAttached(view)) mainWindow?.removeBrowserView(view)
+      } catch {
+        /* noop */
+      }
+    }
+
+    const closeExtensionPanel = (key?: string): void => {
+      const entries = key
+        ? Array.from(extensionPanelViews.entries()).filter(([panelKey]) => panelKey === key)
+        : Array.from(extensionPanelViews.entries())
+
+      for (const [panelKey, panelView] of entries) {
+        removeBrowserView(panelView)
+        try {
+          ; (panelView as unknown as { destroy?: () => void }).destroy?.()
+        } catch {
+          /* noop */
+        }
+        extensionPanelViews.delete(panelKey)
+      }
+    }
+
+    const showActiveView = (view: BrowserView): void => {
+      if (activeView && activeView !== view) {
+        closeExtensionPanel()
+        removeBrowserView(activeView)
+      }
+      addBrowserView(view)
+      activeView = view
+      try {
+        ElectronChromeExtensions.fromSession(view.webContents.session)?.selectTab(view.webContents)
+      } catch {
+        /* noop */
+      }
+    }
+
+    const createFallbackExtensionTab = async (
+      profileId: string | undefined,
+      partition: string,
+      details: ExtensionTabCreateDetails
+    ): Promise<[Electron.WebContents, Electron.BrowserWindow]> => {
+      const viewId = `extension_tab_${Date.now()}_${Math.random().toString(36).slice(2)}`
+      const view = new BrowserView({
+        webPreferences: {
+          sandbox: false,
+          devTools: is.dev,
+          partition,
+          preload: join(__dirname, '../preload/device.js')
+        }
+      })
+      views.set(viewId, view)
+      if (profileId) {
+        if (!profileViews.has(profileId)) {
+          profileViews.set(profileId, new Set())
+        }
+        profileViews.get(profileId)!.add(viewId)
+        viewProfiles.set(viewId, profileId)
+      }
+      try {
+        const activeBounds = activeView?.getBounds()
+        if (activeBounds) {
+          view.setBounds(activeBounds)
+        } else {
+          const content = mainWindow.getContentBounds()
+          view.setBounds(computeBounds({
+            x: 0,
+            y: VIEW_TOP_OFFSET,
+            width: content.width,
+            height: content.height - VIEW_TOP_OFFSET
+          }))
+        }
+      } catch {
+        /* noop */
+      }
+      if (details.url) {
+        await view.webContents.loadURL(details.url)
+      }
+      if (details.active !== false) {
+        mainWindow?.webContents.send('new-tab', {
+          id: viewId,
+          url: details.url || 'about:blank',
+          title: view.webContents.getTitle() || 'Extension',
+          viewReady: true,
+          webContentsId: view.webContents.id,
+          forceCreate: true
+        })
+      }
+      return [view.webContents, mainWindow]
+    }
+
+    const getChromeExtensions = (
+      profileId: string | undefined,
+      electronSession: Electron.Session,
+      partition: string
+    ): ElectronChromeExtensions => {
+      const key = profileId ? `profile-${profileId}` : partition
+      const existing = chromeExtensionManagers.get(key)
+      if (existing) return existing
+
+      const extensions = new ElectronChromeExtensions({
+        license: 'GPL-3.0',
+        session: electronSession,
+        createTab: (details) => createFallbackExtensionTab(profileId, partition, details),
+        selectTab: (tab) => {
+          const view = Array.from(views.values()).find((candidate) => candidate.webContents.id === tab.id)
+          if (view) showActiveView(view)
+        },
+        removeTab: (tab) => {
+          const entry = Array.from(views.entries()).find(([, view]) => view.webContents.id === tab.id)
+          if (!entry) return
+          const [id, view] = entry
+          removeBrowserView(view)
+          if (activeView === view) activeView = null
+          views.delete(id)
+          viewAccounts.delete(id)
+          viewProfiles.delete(id)
+          try {
+            ; (view as unknown as { destroy?: () => void }).destroy?.()
+          } catch {
+            /* noop */
+          }
+        },
+        assignTabDetails: (details, tab) => {
+          details.active = activeView?.webContents.id === tab.id
+          details.highlighted = details.active
+          details.selected = details.active
+        },
+        createWindow: async (details) => {
+          if (details.url) {
+            await createFallbackExtensionTab(profileId, partition, {
+              url: Array.isArray(details.url) ? details.url[0] : details.url,
+              active: true
+            })
+          }
+          return mainWindow
+        },
+        removeWindow: () => {
+          /* Keep the app window alive. */
+        },
+        requestPermissions: async () => true
+      })
+      chromeExtensionManagers.set(key, extensions)
+      return extensions
+    }
 
     const getViewIdByInstance = (view: BrowserView | null): string | undefined => {
       if (!view) return undefined
@@ -302,6 +540,7 @@ if (!gotTheLock) {
             profileViews.set(profileId, new Set())
           }
           profileViews.get(profileId)!.add(id)
+          viewProfiles.set(id, profileId)
         }
 
         if (account?.device?.ip_address) {
@@ -335,6 +574,8 @@ if (!gotTheLock) {
           await view.webContents.setUserAgent(account.device.user_agent)
         }
         const session = view.webContents.session
+        const chromeExtensions = getChromeExtensions(profileId, session, partition)
+        chromeExtensions.addTab(view.webContents, mainWindow)
         if (session && account?.cookies) {
           await Promise.all(
             account?.cookies.map((c) => {
@@ -366,6 +607,8 @@ if (!gotTheLock) {
               await view.webContents.session.extensions.loadExtension(extensionPath, {
                 allowFileAccess: true
               })
+              const extensionKey = `${profileId || id}:${ext.extension_id}`
+              extensionPaths.set(extensionKey, extensionPath)
             } catch (err) {
               console.error(`⚠️ Failed to load extension ${ext.name}:`, err)
             }
@@ -537,7 +780,10 @@ if (!gotTheLock) {
           return menuItems
         }
         view.webContents.on('context-menu', (_, params) => {
-          const menu = Menu.buildFromTemplate(createMenuItem(_, params))
+          const menu = Menu.buildFromTemplate([
+            ...createMenuItem(_, params),
+            ...chromeExtensions.getContextMenuItems(view!.webContents, params)
+          ])
           menu.popup()
         })
         // console.log(view.webContents.session.extensions.getAllExtensions())
@@ -586,8 +832,7 @@ if (!gotTheLock) {
         await view.webContents.reload()
       }
       if (activate) {
-        mainWindow?.setBrowserView(view)
-        activeView = view
+        showActiveView(view)
       }
       return view
     }
@@ -597,6 +842,127 @@ if (!gotTheLock) {
       if (view && bounds) {
         view.setBounds(computeBounds(bounds))
       }
+      if (view) {
+        mainWindow?.webContents.send('bv:update', {
+          id,
+          updates: { webContentsId: view.webContents.id }
+        })
+      }
+      return true
+    })
+    ipcMain.handle('bv:toggle-extension-panel', async (_e, { profileId, extension, bounds }) => {
+      if (!profileId || !extension?.extension_id) return { opened: false }
+
+      const extensionId = extension.extension_id
+      const panelKey = `${profileId}:${extensionId}`
+      const existingPanel = extensionPanelViews.get(panelKey)
+      if (existingPanel && isViewAttached(existingPanel)) {
+        closeExtensionPanel(panelKey)
+        return { opened: false }
+      }
+
+      closeExtensionPanel()
+
+      const partition = `persist:profile-${profileId}`
+      let extensionPath = extensionPaths.get(panelKey)
+      if (!extensionPath && extension.zip_file) {
+        try {
+          extensionPath = await prepareExtension(extension.zip_file, extensionId)
+          extensionPaths.set(panelKey, extensionPath)
+        } catch (err) {
+          console.error(`⚠️ Failed to prepare extension ${extensionId}:`, err)
+        }
+      }
+      const explicitPanelUrl =
+        extension.popup_url || extension.panel_url || extension.sidebar_url || extension.popupUrl || extension.sidebarUrl
+      let panelUrl = explicitPanelUrl
+
+      if (!panelUrl) {
+        if (extensionPath) {
+          try {
+            const manifest = JSON.parse(
+              await fs.promises.readFile(join(extensionPath, 'manifest.json'), 'utf-8')
+            )
+            const candidatePaths = [
+              manifest?.action?.default_popup ||
+                manifest?.browser_action?.default_popup ||
+                manifest?.page_action?.default_popup,
+              manifest?.side_panel?.default_path,
+              manifest?.sidebar_action?.default_panel,
+              manifest?.options_ui?.page,
+              manifest?.options_page,
+              'popup.html',
+              'options.html',
+              'index.html'
+            ]
+              .filter(Boolean)
+              .map((candidatePath) => String(candidatePath).replace(/^\//, ''))
+
+            const manifestPanelPath =
+              candidatePaths.find((candidatePath) =>
+                fs.existsSync(join(extensionPath, candidatePath))
+              ) || candidatePaths[0]
+
+            if (manifestPanelPath) {
+              panelUrl = `chrome-extension://${extensionId}/${manifestPanelPath}`
+            }
+          } catch (err) {
+            console.error(`⚠️ Failed to read manifest for extension ${extensionId}:`, err)
+          }
+        }
+      }
+
+      if (!panelUrl) {
+        panelUrl = `chrome-extension://${extensionId}/popup.html`
+      } else if (!/^(https?:|file:|chrome-extension:)/i.test(panelUrl)) {
+        panelUrl = `chrome-extension://${extensionId}/${String(panelUrl).replace(/^\//, '')}`
+      }
+
+      const panelView = new BrowserView({
+        webPreferences: {
+          sandbox: false,
+          devTools: is.dev,
+          partition
+        }
+      })
+      if (extensionPath) {
+        try {
+          const loadedExtensions = panelView.webContents.session.extensions.getAllExtensions()
+          const isLoaded = loadedExtensions.some((loadedExtension) => loadedExtension.id === extensionId)
+          if (!isLoaded) {
+            await panelView.webContents.session.extensions.loadExtension(extensionPath, {
+              allowFileAccess: true
+            })
+          }
+        } catch (err) {
+          console.error(`⚠️ Failed to load panel extension ${extensionId}:`, err)
+        }
+      }
+      panelView.webContents.setWindowOpenHandler((details) => {
+        try {
+          if (details?.url) mainWindow?.webContents.send('new-tab', details.url)
+        } catch {
+          /* noop */
+        }
+        return { action: 'deny' }
+      })
+
+      const content = mainWindow.getContentBounds()
+      const panelWidth = Math.min(Math.max(Number(bounds?.width) || 380, 280), Math.max(content.width - 24, 280))
+      const panelHeight = Math.min(Math.max(Number(bounds?.height) || 520, 260), Math.max(content.height - VIEW_TOP_OFFSET - 16, 260))
+      const preferredX = Number(bounds?.x) || content.width - panelWidth - 12
+      const preferredY = Number(bounds?.y) || VIEW_TOP_OFFSET + 8
+      const x = Math.max(8, Math.min(preferredX, content.width - panelWidth - 8))
+      const y = Math.max(VIEW_TOP_OFFSET + 4, Math.min(preferredY, content.height - panelHeight - 8))
+
+      panelView.setBounds(computeBounds({ x, y, width: panelWidth, height: panelHeight }))
+      addBrowserView(panelView)
+      extensionPanelViews.set(panelKey, panelView)
+      await panelView.webContents.loadURL(panelUrl)
+      return { opened: true, url: panelUrl }
+    })
+    ipcMain.handle('bv:close-extension-panel', (_e, { profileId, extensionId }) => {
+      closeExtensionPanel(profileId && extensionId ? `${profileId}:${extensionId}` : undefined)
       return true
     })
     ipcMain.handle('bv:set-cookies', async (_e, { id, cookies }: { id: string, cookies: Cookie[] }) => {
@@ -643,8 +1009,7 @@ if (!gotTheLock) {
     ipcMain.handle('bv:focus', (_e, { id }) => {
       const v = getView(id)
       if (v) {
-        mainWindow?.setBrowserView(v)
-        activeView = v
+        showActiveView(v)
       }
       return true
     })
@@ -678,12 +1043,12 @@ if (!gotTheLock) {
     ipcMain.handle('bv:destroy', (_e, { id, profileId }) => {
       const v = getView(id)
       if (v) {
-        if (mainWindow?.getBrowserView() === v) {
-          mainWindow.setBrowserView(null as unknown as BrowserView)
-          if (activeView === v) activeView = null
-        }
+        removeBrowserView(v)
+        ElectronChromeExtensions.fromSession(v.webContents.session)?.removeTab(v.webContents)
+        if (activeView === v) activeView = null
         views.delete(id)
         viewAccounts.delete(id)
+        viewProfiles.delete(id)
         if (profileId && profileViews.has(profileId)) {
           profileViews.get(profileId)!.delete(id)
           if (profileViews.get(profileId)!.size === 0) {
@@ -704,13 +1069,9 @@ if (!gotTheLock) {
         for (const tabId of tabIds) {
           const v = views.get(tabId)
           if (v) {
-            try {
-              if (mainWindow?.getBrowserView() === v)
-                mainWindow.setBrowserView(null as unknown as BrowserView)
-              if (activeView === v) activeView = null
-            } catch {
-              /* noop */
-            }
+            removeBrowserView(v)
+            ElectronChromeExtensions.fromSession(v.webContents.session)?.removeTab(v.webContents)
+            if (activeView === v) activeView = null
             try {
               ; (v as unknown as { destroy?: () => void }).destroy?.()
             } catch {
@@ -718,21 +1079,24 @@ if (!gotTheLock) {
             }
             views.delete(tabId)
             viewAccounts.delete(tabId)
+            viewProfiles.delete(tabId)
           }
         }
         profileViews.delete(profileId)
+      }
+      for (const panelKey of Array.from(extensionPanelViews.keys())) {
+        if (panelKey.startsWith(`${profileId}:`)) closeExtensionPanel(panelKey)
+      }
+      for (const extensionKey of Array.from(extensionPaths.keys())) {
+        if (extensionKey.startsWith(`${profileId}:`)) extensionPaths.delete(extensionKey)
       }
       return true
     })
 
     ipcMain.handle('bv:destroy-all', () => {
       for (const v of views.values()) {
-        try {
-          if (mainWindow?.getBrowserView() === v)
-            mainWindow.setBrowserView(null as unknown as BrowserView)
-        } catch {
-          /* noop */
-        }
+        ElectronChromeExtensions.fromSession(v.webContents.session)?.removeTab(v.webContents)
+        removeBrowserView(v)
         try {
           ; (v as unknown as { destroy?: () => void }).destroy?.()
         } catch {
@@ -742,6 +1106,9 @@ if (!gotTheLock) {
       views.clear()
       profileViews.clear()
       viewAccounts.clear()
+      viewProfiles.clear()
+      closeExtensionPanel()
+      extensionPaths.clear()
       return true
     })
     // Toggle fullscreen for a specific BrowserView (fill window content area below overlay)
@@ -785,11 +1152,7 @@ if (!gotTheLock) {
         } catch {
           /* noop */
         }
-        try {
-          if (mainWindow?.getBrowserView() !== v) mainWindow?.setBrowserView(v)
-        } catch {
-          /* noop */
-        }
+        showActiveView(v)
       }
       return true
     })
@@ -836,15 +1199,15 @@ if (!gotTheLock) {
         await ChromeLauncher.killAll()
         const userDataDir = join(app.getPath('userData'), 'chrome-profile')
         if (fs.existsSync(userDataDir)) {
-          await fs.remove(userDataDir)
+          await fs.promises.rm(userDataDir, { recursive: true, force: true })
         }
         const partitionDir = join(app.getPath('userData'), 'Partitions')
         if (fs.existsSync(partitionDir)) {
-          await fs.remove(partitionDir)
+          await fs.promises.rm(partitionDir, { recursive: true, force: true })
         }
         const extensionsDir = join(app.getPath('userData'), 'extensions')
         if (fs.existsSync(extensionsDir)) {
-          await fs.remove(extensionsDir)
+          await fs.promises.rm(extensionsDir, { recursive: true, force: true })
         }
       } catch {
         /* noop */
@@ -902,6 +1265,16 @@ if (!gotTheLock) {
       if (!v) return []
       const cookies = await v.webContents.session.cookies.get({})
       return cookies
+    })
+    ipcMain.handle('bv:capture-screenshot', async (_e, { id }) => {
+      const v = getView(id)
+      if (!v) return null
+      try {
+        const image = await v.webContents.capturePage()
+        return image.toDataURL()
+      } catch {
+        return null
+      }
     })
     // Get view information including IP, device info, fingerprint, etc.
     ipcMain.handle('bv:get-info', async (_e, { id }) => {

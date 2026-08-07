@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
-import { ArrowLeft, ArrowRight, RotateCw, XIcon, Home, BellIcon, Settings, LogOutIcon, LoaderCircle, Fullscreen, CookieIcon, BracesIcon, InfoIcon } from "lucide-react"
+import { ArrowLeft, ArrowRight, RotateCw, XIcon, Home, BellIcon, Settings, LogOutIcon, LoaderCircle, Fullscreen, CookieIcon, BracesIcon, InfoIcon, Sparkles } from "lucide-react"
 import { useProfiles } from "@renderer/contexts/ProfileContext"
 import { useAuth } from "../contexts/AuthContext"
 import { useCallback, useEffect, useState } from "react"
@@ -9,6 +9,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuGro
 import { Notify } from "@/src/types/global"
 import api from "../lib/axios"
 import { usePanel } from "../contexts/PanelContext"
+import { Button } from "./ui/button"
 
 const TabControl = () => {
   const {
@@ -129,9 +130,12 @@ const TabControl = () => {
   }, [openNotifications])
 
   if (!currentProfile) return <></>;
+  const bookmarks = currentProfile.account?.bookmarks || []
+  const extensionPartition = `persist:profile-${currentProfile.id}`
+  const extensionTab = currentTab?.webContentsId ? String(currentTab.webContentsId) : undefined
   return (
     <div className="flex flex-col">
-      <div className="w-full flex items-center gap-2 pl-2 bg-white pr-3.5 py-1.5 border-b border-slate-200 rounded-t-2xl">
+      <div className="w-full flex items-center gap-2 pl-2 bg-white pr-2 py-1.5 border-b border-slate-200 rounded-t-2xl">
         <div className="flex items-center gap-1">
           <button onClick={handleSwitchToDashboard} className={`h-8 whitespace-nowrap text-xs gap-1.5 rounded-lg text-slate-800 px-2 flex items-center justify-center hover:bg-slate-200 duration-300`}>
             <img className="size-4 min-w-4 object-cover" src={logoSvg}></img>
@@ -168,26 +172,41 @@ const TabControl = () => {
               <CookieIcon size={16}></CookieIcon>
             </button>
           }
+
         </div>
         <div className="w-full flex items-center justify-center">
           <div className="relative focus-within:border-blue-500 border-2 border-slate-200 bg-slate-200 w-full h-8 rounded-lg gap-1 no-drag flex items-center px-4 py-1">
             <input readOnly={currentProfile.id === '1' || !currentProfile?.account?.is_edit_omnibox} type="text" onKeyDown={handleKeyDown} className="bg-transparent focus:outline-none text-slate-800 text-sm w-full pr-2" value={url} onChange={(e) => setUrl(e.target.value)} name="" id="" />
           </div>
         </div>
+        {currentProfile.id !== '1' && extensionTab && extensionPartition &&  (
+          <browser-action-list
+            className="h-8 w-8 p-1.5 min-w-8 flex items-center"
+            partition={extensionPartition}
+            tab={extensionTab}
+            alignment="bottom left"
+          />
+        )}
+        
         {user?.is_superuser && (
-          <button disabled={currentTab?.id === '1'} onClick={togglePanel} className={`h-8 w-8 min-w-8 rounded-lg text-slate-800 flex items-center justify-center duration-300 ${currentTab?.id !== '1' ? 'hover:bg-slate-200' : 'opacity-50 cursor-not-allowed'} `}>
+          <button disabled={currentTab?.id === '1'} onClick={() => togglePanel('info')} className={`h-8 w-8 min-w-8 rounded-lg text-slate-800 flex items-center justify-center duration-300 ${currentTab?.id !== '1' ? 'hover:bg-slate-200' : 'opacity-50 cursor-not-allowed'} `}>
             <InfoIcon size={16} />
           </button>
         )}
+
         <button disabled={currentTab?.id === '1'} onClick={handleToggleFullScreen} className={`h-8 w-8 min-w-8 rounded-lg text-slate-800 flex items-center justify-center duration-300 ${currentTab?.id !== '1' ? 'hover:bg-slate-200' : 'opacity-50 cursor-not-allowed'} `}>
           <Fullscreen size={16} />
         </button>
+        <Button onClick={() => togglePanel('chat')} variant="secondary" className={`support-chat-button h-8 bg-slate-50 hover:bg-white px-2.5 text-xs whitespace-nowrap text-slate-800 font-semibold`}>
+          <Sparkles className="fill-blue-600 stroke-blue-500 stroke-1" size={16} />
+          Chat hỗ trợ
+        </Button>
       </div>
       {
         currentProfile.id !== '1' ?
-          currentProfile?.account?.bookmarks &&
+          bookmarks.length > 0 &&
           <div className="w-full flex items-center gap-2 px-2 bg-white py-1.5 border-b border-slate-200">
-            {currentProfile?.account?.bookmarks?.map(bookmark => (
+            {bookmarks.map(bookmark => (
               <button key={bookmark.url} onClick={() => handleAddNewTab(bookmark.url, bookmark.name)} className="py-1 px-2 h-7 text-xs cursor-pointer hover:bg-slate-200 duration-300 text-slate-600 hover:text-slate-800 rounded-md flex items-center gap-2">
                 {bookmark.name}
               </button>

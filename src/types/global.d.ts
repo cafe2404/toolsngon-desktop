@@ -23,6 +23,10 @@ export type Extension = {
   extension_id: string
   name: string
   zip_file: string
+  icon_url?: string
+  popup_url?: string
+  sidebar_url?: string
+  panel_url?: string
   created_at: string
   updated_at: string
 }
@@ -56,6 +60,10 @@ export type Product = {
   slug: string
   logo_url: string
   url: string
+  guide_video_url?: string
+  tutorial_video_url?: string
+  video_url?: string
+  youtube_url?: string
 }
 export type UserProduct = {
   id: number

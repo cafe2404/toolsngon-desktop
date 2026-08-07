@@ -38,6 +38,13 @@ class BlockedUrlsManager {
 
   isUrlBlocked(url: string): boolean {
     if (!url || this.blockedKeywords.length === 0) return false
+    if (
+      url.startsWith('chrome-extension://') ||
+      url.startsWith('devtools://') ||
+      url.startsWith('file://')
+    ) {
+      return false
+    }
 
     const urlLower = url.toLowerCase()
     return this.blockedKeywords.some((keyword) => urlLower.includes(keyword.toLowerCase()))

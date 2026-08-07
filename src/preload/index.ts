@@ -1,7 +1,10 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { contextBridge, Cookie, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import { injectBrowserAction } from 'electron-chrome-extensions/browser-action'
 import { Account } from '../types/global'
+
+injectBrowserAction()
 
 const api = {
   onDeepLink: (callback: (url: string) => void): (() => void) => {
@@ -10,6 +13,36 @@ const api = {
     return () => ipcRenderer.removeListener('deep-link', listener)
   },
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
+  supportGuide: {
+    open: (payload: {
+      title: string
+      description?: string
+      contentMarkdown?: string
+      guideUrl?: string
+      productTitle?: string
+      productLogoUrl?: string
+    }) => ipcRenderer.invoke('support-guide:open', payload),
+    getPayload: () => ipcRenderer.invoke('support-guide:get-payload'),
+    onPayloadUpdated: (callback: (payload: {
+      title: string
+      description?: string
+      contentMarkdown?: string
+      guideUrl?: string
+      productTitle?: string
+      productLogoUrl?: string
+    } | null) => void): (() => void) => {
+      const listener = (_: Electron.IpcRendererEvent, payload: {
+        title: string
+        description?: string
+        contentMarkdown?: string
+        guideUrl?: string
+        productTitle?: string
+        productLogoUrl?: string
+      } | null): void => callback(payload)
+      ipcRenderer.on('support-guide:payload-updated', listener)
+      return () => ipcRenderer.removeListener('support-guide:payload-updated', listener)
+    }
+  },
   onBrowserViewUpdate: (
     callback: (payload: { id: string; updates: Record<string, unknown> }) => void
   ): (() => void) => {
@@ -31,6 +64,13 @@ const api = {
     ) => ipcRenderer.invoke('bv:attach', { id, url, account, bounds, activate, profileId }),
     openChrome: (id: string, url?: string, account?: Account) =>
       ipcRenderer.invoke('bv:open-chrome', { id, url, account }),
+    toggleExtensionPanel: (
+      profileId: string,
+      extension: NonNullable<Account['extensions']>[number],
+      bounds?: { x: number; y: number; width: number; height: number }
+    ) => ipcRenderer.invoke('bv:toggle-extension-panel', { profileId, extension, bounds }),
+    closeExtensionPanel: (profileId?: string, extensionId?: string) =>
+      ipcRenderer.invoke('bv:close-extension-panel', { profileId, extensionId }),
     setBounds: (id: string, bounds: { x: number; y: number; width: number; height: number }) =>
       ipcRenderer.invoke('bv:set-bounds', { id, bounds }),
     focus: (id: string) => ipcRenderer.invoke('bv:focus', { id }),
@@ -50,12 +90,27 @@ const api = {
       ipcRenderer.invoke('bv:inject-script', { id, script }),
     toggleFullscreen: (id: string) =>
       ipcRenderer.invoke('bv:toggle-fullscreen', { id }),
-    onNewTab: (callback: (url: string) => void): (() => void) => {
-      const listener = (_: Electron.IpcRendererEvent, url: string): void => callback(url)
+    onNewTab: (callback: (payload: string | {
+      id?: string
+      url: string
+      title?: string
+      viewReady?: boolean
+      webContentsId?: number
+      forceCreate?: boolean
+    }) => void): (() => void) => {
+      const listener = (_: Electron.IpcRendererEvent, payload: string | {
+        id?: string
+        url: string
+        title?: string
+        viewReady?: boolean
+        webContentsId?: number
+        forceCreate?: boolean
+      }): void => callback(payload)
       ipcRenderer.on('new-tab', listener)
       return () => ipcRenderer.removeListener('new-tab', listener)
     },
     getCookies: (id: string) => ipcRenderer.invoke('bv:get-cookies', { id }),
+    captureScreenshot: (id: string) => ipcRenderer.invoke('bv:capture-screenshot', { id }),
     setCookies: (id: string, cookies: Cookie[]) => ipcRenderer.invoke('bv:set-cookies', { id, cookies }),
     getInfo: (id: string) => ipcRenderer.invoke('bv:get-info', { id }),
     getSessionStorage: (id: string) => ipcRenderer.invoke('bv:get-session-storage', { id }),

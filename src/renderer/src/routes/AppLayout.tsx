@@ -8,11 +8,12 @@ import ProfileBar from '../components/ProfileBar'
 import TabControl from '../components/TabControl'
 import TabBar from '../components/TabBar'
 import TabInfo from '../components/TabInfo'
+import ChatPanel from '../components/ChatPanel'
 import { usePanel } from '../contexts/PanelContext'
 
 function AppLayout(): React.JSX.Element {
     const { profiles, currentProfile } = useProfiles()
-    const { isOpen } = usePanel()
+    const { isOpen, panelType } = usePanel()
     const { user } = useAuth()
     const profilesRef = useRef(profiles);
     const userRef = useRef(user);
@@ -47,7 +48,8 @@ function AppLayout(): React.JSX.Element {
                 <div className="w-full h-full overflow-hidden bg-white">
                     <Outlet />
                 </div>
-                {currentProfile && currentProfile.id !== '1' && isOpen && user?.is_superuser &&
+                <ChatPanel isVisible={isOpen && panelType === 'chat'} />
+                {currentProfile && currentProfile.id !== '1' && isOpen && panelType === 'info' && user?.is_superuser &&
                     <TabInfo />
                 }
             </div>

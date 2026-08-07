@@ -1,10 +1,24 @@
 import { Account, Cookie, UpdateInfo } from '../types/global'
 
+type SupportGuidePayload = {
+  title: string
+  description?: string
+  contentMarkdown?: string
+  guideUrl?: string
+  productTitle?: string
+  productLogoUrl?: string
+}
+
 declare global {
   interface Window {
     api: {
       onDeepLink: (callback: (url: string) => void) => () => void
       openExternal: (url: string) => Promise<void>
+      supportGuide: {
+        open: (payload: SupportGuidePayload) => Promise<boolean>
+        getPayload: () => Promise<SupportGuidePayload | null>
+        onPayloadUpdated: (callback: (payload: SupportGuidePayload | null) => void) => () => void
+      }
       onBrowserViewUpdate: (
         callback: (payload: { id: string; updates: Record<string, unknown> }) => void
       ) => () => void
@@ -18,6 +32,12 @@ declare global {
           profileId?: string
         ) => Promise<boolean>
         openChrome: (id: string, url?: string, account?: Account) => Promise<boolean>
+        toggleExtensionPanel: (
+          profileId: string,
+          extension: NonNullable<Account['extensions']>[number],
+          bounds?: { x: number; y: number; width: number; height: number }
+        ) => Promise<{ opened: boolean; url?: string }>
+        closeExtensionPanel: (profileId?: string, extensionId?: string) => Promise<boolean>
         setCookies: (id: string, cookies: Cookie[]) => Promise<boolean>
         setBounds: (
           id: string,
@@ -36,8 +56,16 @@ declare global {
         destroy: (id: string, profileId?: string) => Promise<boolean>
         injectScript: (id: string, script: string) => Promise<boolean>
         toggleFullscreen: (id: string) => Promise<boolean>
-        onNewTab: (callback: (url: string) => void) => () => void
+        onNewTab: (callback: (payload: string | {
+          id?: string
+          url: string
+          title?: string
+          viewReady?: boolean
+          webContentsId?: number
+          forceCreate?: boolean
+        }) => void) => () => void
         getCookies: (id: string) => Promise<Cookie[]>
+        captureScreenshot: (id: string) => Promise<string | null>
         getInfo: (id: string) => Promise<{
           accountId?: number
           accountName?: string

@@ -5,6 +5,15 @@ import { api } from '@renderer/lib/axios'
 import type { AppSetting, Category, UserProduct } from 'src/types/global'
 import { toast } from "sonner"
 
+const SUPPORT_CHAT_STORAGE_PREFIX = 'toolsngon:support-chat'
+
+const clearSupportChatStorage = (): void => {
+    for (const key of Object.keys(localStorage)) {
+        if (key.startsWith(SUPPORT_CHAT_STORAGE_PREFIX)) {
+            localStorage.removeItem(key)
+        }
+    }
+}
 
 type User = {
     id: number
@@ -117,6 +126,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const logout = useCallback(async () => {
         try {
+            clearSupportChatStorage()
             // Close all tabs first
             await window.api?.browserView?.destroyAll?.()
             await window.api?.browserView?.clearAllData?.()

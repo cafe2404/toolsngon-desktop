@@ -15,6 +15,7 @@ export type Tab = {
   isLoading?: boolean
   canGoBack?: boolean
   canGoForward?: boolean
+  webContentsId?: number
   component?: React.ComponentType
   viewReady?: boolean
 }

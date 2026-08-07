@@ -3,25 +3,36 @@
 // PanelContext.tsx
 import { createContext, useContext, useState, ReactNode } from "react";
 
+export type PanelType = 'info' | 'chat';
+
 type PanelContextType = {
     isOpen: boolean;
-    openPanel: () => void;
+    panelType: PanelType;
+    openPanel: (type?: PanelType) => void;
     closePanel: () => void;
-    togglePanel: () => void;
+    togglePanel: (type?: PanelType) => void;
 };
 
 const PanelContext = createContext<PanelContextType | null>(null);
 
 export const PanelProvider = ({ children }: { children: ReactNode }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const [panelType, setPanelType] = useState<PanelType>('info');
 
     return (
         <PanelContext.Provider
             value={{
                 isOpen,
-                openPanel: () => setIsOpen(true),
+                panelType,
+                openPanel: (type = 'info') => {
+                    setPanelType(type)
+                    setIsOpen(true)
+                },
                 closePanel: () => setIsOpen(false),
-                togglePanel: () => setIsOpen((v) => !v),
+                togglePanel: (type = 'info') => {
+                    setPanelType(type)
+                    setIsOpen((v) => (type === panelType ? !v : true))
+                },
             }}
         >
             {children}
