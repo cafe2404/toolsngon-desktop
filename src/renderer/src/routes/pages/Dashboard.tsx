@@ -1,8 +1,9 @@
-import {  Ban, CheckCheck, ChevronDown, Copy,  Search } from "lucide-react";
-import { JSX, useEffect, useMemo, useRef, useState, type ChangeEvent, type MouseEvent } from "react";
+import { Ban, CheckCheck, ChevronDown, Copy, Search } from "lucide-react";
+import { JSX, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import ProductCard from "@renderer/components/ProductCard";
 import { useProfiles } from "@renderer/contexts/ProfileContext";
 import { useAuth } from "@renderer/contexts/AuthContext";
+import { Carousel, CarouselContent, CarouselItem } from "@renderer/components/ui/carousel"
 
 export default function Dashboard(): JSX.Element {
     const { userProducts, userProductsLoading, userProductsError, appSetting, categories } = useAuth()
@@ -81,8 +82,7 @@ export default function Dashboard(): JSX.Element {
         return [...sortedByCategoryOrder, ...otherGroups]
     }, [filteredItems, categories])
 
-    const handleScrollToCategory = (event: MouseEvent<HTMLAnchorElement>, sectionId: string): void => {
-        event.preventDefault()
+    const handleScrollToCategory = (sectionId: string): void => {
         const section = document.getElementById(sectionId)
         if (!section) return
         section.scrollIntoView({ behavior: "smooth", block: "start" })
@@ -137,24 +137,30 @@ export default function Dashboard(): JSX.Element {
                         </div>
                     </div>
                     <div className="flex items-center gap-2 w-full">
-
-                        {categories.map(category => (
-                            <a
-                                href={`#cattegory-${category.id}`}
-                                key={category.id}
-                                onClick={(event) => handleScrollToCategory(event, `cattegory-${category.id}`)}
-                                className="bg-white rounded-md text-sm hover:border-slate-500 gap-2 px-2 py-1.5 flex items-center justify-center text-slate-600 duration-300 border border-slate-200"
-                            >
-                                <span className="text-sm">{category.name}</span>
-                            </a>
-                        ))}
-                        <a
-                            href="#cattegory-khac"
-                            onClick={(event) => handleScrollToCategory(event, "cattegory-khac")}
-                            className="bg-white rounded-md text-sm hover:border-slate-500 gap-2 px-2 py-1.5 flex items-center justify-center text-slate-600 duration-300 border border-slate-200"
+                        <Carousel
+                            opts={{ align: 'start', dragFree: true }}
+                            className="mb-2 w-full"
+                            aria-label="Chá»n luá»“ng há»— trá»£"
                         >
-                            <span className="text-sm">Khác</span>
-                        </a>
+                            <CarouselContent className="-ml-2">
+                                {categories.map(category => (
+                                    <CarouselItem
+                                        key={category.id}
+                                        onClick={() => handleScrollToCategory( `cattegory-${category.id}`)}
+                                        className="bg-white basis-auto ml-2 rounded-md text-sm hover:border-slate-500 gap-2 px-2 py-1.5 flex items-center justify-center text-slate-600 duration-300 border border-slate-200"
+                                    >
+                                        <span className="text-sm">{category.name}</span>
+                                    </CarouselItem>
+                                ))}
+                                <CarouselItem
+                                    key={"cattegory-khac"}
+                                    onClick={() => handleScrollToCategory( `cattegory-khac`)}
+                                    className="bg-white basis-auto ml-2 rounded-md text-sm hover:border-slate-500 gap-2 px-2 py-1.5 flex items-center justify-center text-slate-600 duration-300 border border-slate-200"
+                                >
+                                    <span className="text-sm">Khác</span>
+                                </CarouselItem>
+                            </CarouselContent>
+                        </Carousel>
                     </div>
                 </div>
                 {userProductsLoading && (

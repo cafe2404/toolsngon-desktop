@@ -59,13 +59,13 @@ const ProfileContext = createContext<ProfileContextType | null>(null)
 const defaultProfile: Profile = {
   id: "1",
   partition: "app:dashboard",
-  name: "Quản lý tài khoản",
+  name: "",
   icon: logo,
   tabs: [
     {
       id: "1",
       name: "dashboard",
-      title: "Quản lý tài khoản",
+      title: "",
       favicon: logo,
       component: Dashboard,
       currentUrl: "toolsngon://dashboard"

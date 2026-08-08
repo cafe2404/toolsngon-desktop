@@ -11,7 +11,6 @@ const ProfileBar = (): React.JSX.Element => {
         <div
             className={`flex flex-col gap-1.5 h-full duration-200 bg-white border-r border-slate-200`}
         >
-            {/* 📁 Danh sách profiles */}
             <div className="flex-1 no-scrollbar px-2 py-4">
                 <div
                     className="w-full flex flex-col gap-4"

@@ -10,7 +10,7 @@ import TabBar from '../components/TabBar'
 import TabInfo from '../components/TabInfo'
 import ChatPanel from '../components/ChatPanel'
 import { usePanel } from '../contexts/PanelContext'
-
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs"
 function AppLayout(): React.JSX.Element {
     const { profiles, currentProfile } = useProfiles()
     const { isOpen, panelType } = usePanel()
@@ -39,7 +39,21 @@ function AppLayout(): React.JSX.Element {
     }, []);
     return (
         <div className="w-screen h-screen bg-slate-200 flex overflow-y-hidden flex-col">
-            <TabBar />
+            <div className="flex items-center gap-1.5 w-full py-1.5 bg-slate-200 navbar pl-2 pr-36">
+                <TabBar />
+                <Tabs defaultValue="vn">
+                    <TabsList className='h-8 gap-2 bg-slate-200'>
+                        <TabsTrigger value="en" className='p-1.5 w-fit data-[state=active]:shadow-none! data-[state=active]:bg-white! pr-2'>
+                            <img src="https://flagicons.lipis.dev/flags/1x1/gb-eng.svg" className='rounded-xs size-4' alt="" />
+                            <p>EN</p>
+                        </TabsTrigger>
+                        <TabsTrigger value="vn"  className='p-1.5 w-fit data-[state=active]:shadow-none! data-[state=active]:bg-white! pr-2'>
+                            <img src="https://flagicons.lipis.dev/flags/1x1/vn.svg" className='rounded-sm size-4' alt="" />
+                            VN
+                        </TabsTrigger>
+                    </TabsList>
+                </Tabs>
+            </div>
             <TabControl />
             <div className="flex w-full h-full overflow-hidden">
                 {profiles.length > 1 &&

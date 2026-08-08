@@ -195,7 +195,7 @@ const createSupportMessage = (node: SupportNode, flow?: SupportFlowRuntime): Cha
         actions.push({
             id: `${node.key}_guide_${flow.guide.id}`,
             type: 'open-support-guide',
-            label: 'Xem hÆ°á»›ng dáº«n',
+            label: 'Xem hướng dẫn',
             metadata: { guide: flow.guide }
         })
     }
@@ -622,7 +622,7 @@ const ChatPanel = ({ isVisible }: ChatPanelProps): React.JSX.Element => {
         const guide = action.metadata?.guide as SupportGuide | undefined
         if (!guide) return
         window.api.supportGuide.open({
-            title: guide.title || 'HÆ°á»›ng dáº«n há»— trá»£',
+            title: guide.title || 'Hướng dẫn sử dụng',
             description: guide.description,
             contentMarkdown: guide.content_markdown || guide.description || '',
             guideUrl: guide.url || guide.file_url,
