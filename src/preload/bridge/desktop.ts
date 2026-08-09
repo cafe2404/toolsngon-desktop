@@ -12,6 +12,11 @@ export type BrowserTabUpdate = {
   updates: Record<string, unknown>
 }
 
+export type BrowserTabAttachResult = {
+  ok: boolean
+  webContentsId?: number
+}
+
 export type DetachedWindowClosedPayload = {
   id: string
   profileId?: string
@@ -61,7 +66,7 @@ const browserTabs = {
       bounds,
       activate,
       profileId
-    }) as Promise<boolean>,
+    }) as Promise<BrowserTabAttachResult>,
   openChrome: (id: string, url?: string, account?: Account) =>
     ipcRenderer.invoke(channels.browser.tabs.openChrome, { id, url, account }) as Promise<boolean>,
   setBounds: (id: string, bounds: Bounds) =>

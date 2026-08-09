@@ -186,7 +186,7 @@ const TabControl = () => {
               )}
               {currentTab?.title}
             </div>
-            {currentProfile.id !== '1' && (
+            {currentProfile.id !== '1' && extensionTab && (
               <browser-action-list
                 className="size-9 flex items-center absolute top-1/2 -translate-y-1/2 -right-1.5"
                 partition={extensionPartition}

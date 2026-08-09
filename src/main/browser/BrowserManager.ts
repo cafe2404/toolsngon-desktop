@@ -63,6 +63,18 @@ export function registerWebContentsViewManager(mainWindow: BrowserWindow): WebCo
   const extensionPaths = new Map<string, string>() // key: profileId:extensionId
   const extensionIdAliases = new Map<string, string>() // key: profileId:configuredExtensionId, value: loaded extension id
   const chromeExtensionManagers = new Map<string, ElectronChromeExtensions>() // key: profile partition
+  const crxProtocolSessions = new WeakSet<Electron.Session>()
+
+  const ensureExtensionProtocol = (electronSession: Electron.Session): void => {
+    if (crxProtocolSessions.has(electronSession)) return
+
+    try {
+      ElectronChromeExtensions.handleCRXProtocol(electronSession)
+      crxProtocolSessions.add(electronSession)
+    } catch (err) {
+      console.error('Failed to register extension protocol for session:', err)
+    }
+  }
 
   const handleAppProtocolUrl = (url?: string): boolean => {
     return sendAppProtocolUrl(mainWindow, url)
@@ -266,7 +278,8 @@ export function registerWebContentsViewManager(mainWindow: BrowserWindow): WebCo
     const viewId = `extension_tab_${Date.now()}_${Math.random().toString(36).slice(2)}`
     const view = new WebContentsView({
       webPreferences: {
-        sandbox: false,
+        sandbox: true,
+        contextIsolation: true,
         devTools: is.dev,
         partition,
         preload: join(__dirname, '../../preload/device.js')
@@ -317,6 +330,8 @@ export function registerWebContentsViewManager(mainWindow: BrowserWindow): WebCo
     const existing = chromeExtensionManagers.get(key)
     if (existing) return existing
 
+    ensureExtensionProtocol(electronSession)
+
     const extensions = new ElectronChromeExtensions({
       license: 'GPL-3.0',
       session: electronSession,
@@ -356,6 +371,13 @@ export function registerWebContentsViewManager(mainWindow: BrowserWindow): WebCo
         /* Keep the app window alive. */
       },
       requestPermissions: async () => true
+    })
+    extensions.on('browser-action-popup-created', (popup) => {
+      try {
+        popup.browserWindow?.setHasShadow(true)
+      } catch {
+        /* noop */
+      }
     })
     chromeExtensionManagers.set(key, extensions)
     return extensions
@@ -417,7 +439,8 @@ export function registerWebContentsViewManager(mainWindow: BrowserWindow): WebCo
       const additionalArguments = getDeviceArguments(account)
       view = new WebContentsView({
         webPreferences: {
-          sandbox: false,
+          sandbox: true,
+          contextIsolation: true,
           devTools: is.dev,
           partition,
           additionalArguments,
@@ -703,59 +726,72 @@ export function registerWebContentsViewManager(mainWindow: BrowserWindow): WebCo
       view.setBounds(computeBounds(bounds))
     }
     if (view) {
+      const webContentsId = view.webContents.id
       mainWindow?.webContents.send('bv:update', {
         id,
-        updates: { webContentsId: view.webContents.id }
+        updates: { webContentsId }
       })
+      return { ok: true, webContentsId }
     }
-    return true
+    return { ok: false }
   })
   ipcMain.handle('bv:toggle-extension-panel', async (_e, { profileId, extension, bounds }) => {
     if (!profileId || !extension?.extension_id) return { opened: false }
 
     const extensionId = extension.extension_id
     const panelKey = getExtensionPanelKey(profileId, extensionId)
-    const existingPanel = extensionPanelViews.get(panelKey)
+    const actualExtensionId = extensionIdAliases.get(panelKey) || extensionId
+    const actualPanelKey = getExtensionPanelKey(profileId, actualExtensionId)
+    const existingPanel = extensionPanelViews.get(panelKey) || extensionPanelViews.get(actualPanelKey)
     if (existingPanel && isViewAttached(existingPanel)) {
       closeExtensionPanel(panelKey)
+      if (actualPanelKey !== panelKey) closeExtensionPanel(actualPanelKey)
       return { opened: false }
     }
 
     closeExtensionPanel()
 
     const partition = getProfilePartition(profileId, profileId)
-    let extensionPath = extensionPaths.get(panelKey)
+    let extensionPath = extensionPaths.get(panelKey) || extensionPaths.get(actualPanelKey)
     if (!extensionPath && extension.zip_file) {
       try {
         extensionPath = await prepareExtension(extension.zip_file, extensionId)
         extensionPaths.set(panelKey, extensionPath)
       } catch (err) {
-        console.error(`⚠️ Failed to prepare extension ${extensionId}:`, err)
+        console.error(`Failed to prepare extension ${extensionId}:`, err)
       }
     }
-    const panelUrl = await resolveExtensionPanelUrl(extension, extensionPath)
+    const panelUrl = await resolveExtensionPanelUrl(
+      { ...extension, actual_extension_id: actualExtensionId },
+      extensionPath
+    )
     if (!panelUrl) return { opened: false }
 
     const panelView = new WebContentsView({
       webPreferences: {
-        sandbox: false,
+        sandbox: true,
+        contextIsolation: true,
         devTools: is.dev,
         partition
       }
     })
+    ensureExtensionProtocol(panelView.webContents.session)
     if (extensionPath) {
       try {
         const loadedExtensions = panelView.webContents.session.extensions.getAllExtensions()
         const isLoaded = loadedExtensions.some(
-          (loadedExtension) => loadedExtension.id === extensionId
+          (loadedExtension) => loadedExtension.id === actualExtensionId
         )
         if (!isLoaded) {
-          await panelView.webContents.session.extensions.loadExtension(extensionPath, {
-            allowFileAccess: true
-          })
+          const loadedExtension = await panelView.webContents.session.extensions.loadExtension(
+            extensionPath,
+            { allowFileAccess: true }
+          )
+          extensionIdAliases.set(panelKey, loadedExtension.id)
+          extensionPaths.set(getExtensionPanelKey(profileId, loadedExtension.id), extensionPath)
         }
       } catch (err) {
-        console.error(`⚠️ Failed to load panel extension ${extensionId}:`, err)
+        console.error(`Failed to load panel extension ${extensionId}:`, err)
       }
     }
     panelView.webContents.setWindowOpenHandler((details) => {
@@ -784,6 +820,7 @@ export function registerWebContentsViewManager(mainWindow: BrowserWindow): WebCo
     panelView.setBounds(computeBounds({ x, y, width: panelWidth, height: panelHeight }))
     addWebContentsView(panelView)
     extensionPanelViews.set(panelKey, panelView)
+    extensionPanelViews.set(actualPanelKey, panelView)
     await panelView.webContents.loadURL(panelUrl)
     return { opened: true, url: panelUrl }
   })

@@ -3,6 +3,7 @@ import { join } from 'path'
 
 type ExtensionLike = Record<string, unknown> & {
   extension_id?: string
+  actual_extension_id?: string
   popup_url?: string
   panel_url?: string
   sidebar_url?: string
@@ -18,7 +19,7 @@ export async function resolveExtensionPanelUrl(
   extension: ExtensionLike,
   extensionPath?: string
 ): Promise<string | undefined> {
-  const extensionId = extension.extension_id
+  const extensionId = extension.actual_extension_id || extension.extension_id
   if (!extensionId) return undefined
 
   const explicitPanelUrl =

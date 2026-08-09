@@ -1,7 +1,7 @@
-import { app, shell, BrowserWindow, protocol, globalShortcut } from 'electron'
+import { app, shell, BrowserWindow, protocol, globalShortcut, session } from 'electron'
 import path, { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { ElectronChromeExtensions } from 'electron-chrome-extensions'
+import { ElectronChromeExtensions, setSessionPartitionResolver } from 'electron-chrome-extensions'
 import icon from '../../resources/icon.png?asset'
 import * as ChromeLauncher from 'chrome-launcher'
 import { registerAppIpc } from './ipc/app.ipc'
@@ -104,6 +104,7 @@ if (!gotTheLock) {
     app.on('browser-window-created', (_, window) => {
       optimizer.watchWindowShortcuts(window)
     })
+    setSessionPartitionResolver((partition) => session.fromPartition(partition))
     createWindow()
     registerAppIpc({
       mainWindow,

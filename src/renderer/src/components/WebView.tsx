@@ -34,12 +34,18 @@ export default function WebView({
         height: Math.floor(rect.height)
       }
     }
-    // Only attach if this is the first time this tab is being rendered
     let cancelled = false
+    const updateHandler = (payload: { id: string; updates: Record<string, unknown> }): void => {
+      if (payload.id !== id) return
+      updateTab(profileID, id, payload.updates as Partial<Tab>)
+    }
+    const unsubscribe = desktop.browser.tabs.onUpdated(updateHandler)
+
+    // Only attach if this is the first time this tab is being rendered
     if (!tab.viewReady) {
-      getDesktopWebLoginUrl(initialUrl).then((targetUrl) => {
+      getDesktopWebLoginUrl(initialUrl).then(async (targetUrl) => {
         if (cancelled) return
-        desktop.browser.tabs.attach(
+        const result = await desktop.browser.tabs.attach(
           id,
           targetUrl || initialUrl,
           currentProfile?.account,
@@ -47,7 +53,8 @@ export default function WebView({
           false,
           profileID
         )
-        updateTab(profileID, id, { viewReady: true })
+        if (cancelled) return
+        updateTab(profileID, id, { viewReady: result.ok, webContentsId: result.webContentsId })
       })
     }
     const onResize = (): void => {
@@ -61,12 +68,6 @@ export default function WebView({
       ro = new ResizeObserver(() => onResize())
       ro.observe(containerRef.current)
     }
-
-    const updateHandler = (payload: { id: string; updates: Record<string, unknown> }): void => {
-      if (payload.id !== id) return
-      updateTab(profileID, id, payload.updates as Partial<Tab>)
-    }
-    const unsubscribe = desktop.browser.tabs.onUpdated(updateHandler)
 
     return (): void => {
       cancelled = true
