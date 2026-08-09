@@ -23,25 +23,39 @@ const api = {
       productLogoUrl?: string
     }) => ipcRenderer.invoke('support-guide:open', payload),
     getPayload: () => ipcRenderer.invoke('support-guide:get-payload'),
-    onPayloadUpdated: (callback: (payload: {
-      title: string
-      description?: string
-      contentMarkdown?: string
-      guideUrl?: string
-      productTitle?: string
-      productLogoUrl?: string
-    } | null) => void): (() => void) => {
-      const listener = (_: Electron.IpcRendererEvent, payload: {
-        title: string
-        description?: string
-        contentMarkdown?: string
-        guideUrl?: string
-        productTitle?: string
-        productLogoUrl?: string
-      } | null): void => callback(payload)
+    onPayloadUpdated: (
+      callback: (
+        payload: {
+          title: string
+          description?: string
+          contentMarkdown?: string
+          guideUrl?: string
+          productTitle?: string
+          productLogoUrl?: string
+        } | null
+      ) => void
+    ): (() => void) => {
+      const listener = (
+        _: Electron.IpcRendererEvent,
+        payload: {
+          title: string
+          description?: string
+          contentMarkdown?: string
+          guideUrl?: string
+          productTitle?: string
+          productLogoUrl?: string
+        } | null
+      ): void => callback(payload)
       ipcRenderer.on('support-guide:payload-updated', listener)
       return () => ipcRenderer.removeListener('support-guide:payload-updated', listener)
     }
+  },
+  authLoginView: {
+    open: (url: string, bounds: { x: number; y: number; width: number; height: number }) =>
+      ipcRenderer.invoke('auth-login-view:open', { url, bounds }),
+    setBounds: (bounds: { x: number; y: number; width: number; height: number }) =>
+      ipcRenderer.invoke('auth-login-view:set-bounds', { bounds }),
+    close: () => ipcRenderer.invoke('auth-login-view:close')
   },
   onBrowserViewUpdate: (
     callback: (payload: { id: string; updates: Record<string, unknown> }) => void
@@ -88,30 +102,41 @@ const api = {
       ipcRenderer.invoke('bv:destroy', { id, profileId }),
     injectScript: (id: string, script: string) =>
       ipcRenderer.invoke('bv:inject-script', { id, script }),
-    toggleFullscreen: (id: string) =>
-      ipcRenderer.invoke('bv:toggle-fullscreen', { id }),
-    onNewTab: (callback: (payload: string | {
-      id?: string
-      url: string
-      title?: string
-      viewReady?: boolean
-      webContentsId?: number
-      forceCreate?: boolean
-    }) => void): (() => void) => {
-      const listener = (_: Electron.IpcRendererEvent, payload: string | {
-        id?: string
-        url: string
-        title?: string
-        viewReady?: boolean
-        webContentsId?: number
-        forceCreate?: boolean
-      }): void => callback(payload)
+    toggleFullscreen: (id: string) => ipcRenderer.invoke('bv:toggle-fullscreen', { id }),
+    onNewTab: (
+      callback: (
+        payload:
+          | string
+          | {
+              id?: string
+              url: string
+              title?: string
+              viewReady?: boolean
+              webContentsId?: number
+              forceCreate?: boolean
+            }
+      ) => void
+    ): (() => void) => {
+      const listener = (
+        _: Electron.IpcRendererEvent,
+        payload:
+          | string
+          | {
+              id?: string
+              url: string
+              title?: string
+              viewReady?: boolean
+              webContentsId?: number
+              forceCreate?: boolean
+            }
+      ): void => callback(payload)
       ipcRenderer.on('new-tab', listener)
       return () => ipcRenderer.removeListener('new-tab', listener)
     },
     getCookies: (id: string) => ipcRenderer.invoke('bv:get-cookies', { id }),
     captureScreenshot: (id: string) => ipcRenderer.invoke('bv:capture-screenshot', { id }),
-    setCookies: (id: string, cookies: Cookie[]) => ipcRenderer.invoke('bv:set-cookies', { id, cookies }),
+    setCookies: (id: string, cookies: Cookie[]) =>
+      ipcRenderer.invoke('bv:set-cookies', { id, cookies }),
     getInfo: (id: string) => ipcRenderer.invoke('bv:get-info', { id }),
     getSessionStorage: (id: string) => ipcRenderer.invoke('bv:get-session-storage', { id }),
     getLocalStorage: (id: string) => ipcRenderer.invoke('bv:get-local-storage', { id }),

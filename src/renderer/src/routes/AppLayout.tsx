@@ -1,20 +1,20 @@
 import { Outlet } from 'react-router-dom'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import api from '../lib/axios'
 import { useProfiles } from '../contexts/ProfileContext'
 import { useAuth } from '../contexts/AuthContext'
 import { Toaster } from "@components/ui/sonner"
-import ProfileBar from '../components/ProfileBar'
 import TabControl from '../components/TabControl'
 import TabBar from '../components/TabBar'
 import TabInfo from '../components/TabInfo'
 import ChatPanel from '../components/ChatPanel'
 import { usePanel } from '../contexts/PanelContext'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs"
+import Sidebar from '../components/Sidebar'
 function AppLayout(): React.JSX.Element {
     const { profiles, currentProfile } = useProfiles()
     const { isOpen, panelType } = usePanel()
     const { user } = useAuth()
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
     const profilesRef = useRef(profiles);
     const userRef = useRef(user);
     useEffect(() => {
@@ -38,36 +38,26 @@ function AppLayout(): React.JSX.Element {
         return () => clearInterval(interval);
     }, []);
     return (
-        <div className="w-screen h-screen bg-slate-200 flex overflow-y-hidden flex-col">
-            <div className="flex items-center gap-1.5 w-full py-1.5 bg-slate-200 navbar pl-2 pr-36">
-                <TabBar />
-                <Tabs defaultValue="vn">
-                    <TabsList className='h-8 gap-2 bg-slate-200'>
-                        <TabsTrigger value="en" className='p-1.5 w-fit data-[state=active]:shadow-none! data-[state=active]:bg-white! pr-2'>
-                            <img src="https://flagicons.lipis.dev/flags/1x1/gb-eng.svg" className='rounded-xs size-4' alt="" />
-                            <p>EN</p>
-                        </TabsTrigger>
-                        <TabsTrigger value="vn"  className='p-1.5 w-fit data-[state=active]:shadow-none! data-[state=active]:bg-white! pr-2'>
-                            <img src="https://flagicons.lipis.dev/flags/1x1/vn.svg" className='rounded-sm size-4' alt="" />
-                            VN
-                        </TabsTrigger>
-                    </TabsList>
-                </Tabs>
-            </div>
-            <TabControl />
-            <div className="flex w-full h-full overflow-hidden">
-                {profiles.length > 1 &&
-                    <ProfileBar></ProfileBar>
-                }
-                <div className="w-full h-full overflow-hidden bg-white">
-                    <Outlet />
+        <div className="w-screen h-screen bg-slate-100 flex overflow-y-hidden">
+            <div className={`${sidebarCollapsed ? "w-16" : "w-62"} duration-300 shrink-0`}>
+                <div className="w-full bg-white h-full border-r border-r-slate-200">
+                    <Sidebar collapsed={sidebarCollapsed} onToggleCollapsed={() => setSidebarCollapsed((prev) => !prev)} />
                 </div>
-                <ChatPanel isVisible={isOpen && panelType === 'chat'} />
-                {currentProfile && currentProfile.id !== '1' && isOpen && panelType === 'info' && user?.is_superuser &&
-                    <TabInfo />
-                }
             </div>
-            <Toaster />
+            <div className="h-full flex flex-col flex-1">
+                <TabBar />
+                <TabControl />
+                <div className="flex h-full overflow-hidden">
+                    <div className="w-full h-full">
+                        <Outlet />
+                    </div>
+                    <ChatPanel isVisible={isOpen && panelType === 'chat'} />
+                    {currentProfile && currentProfile.id !== '1' && isOpen && panelType === 'info' && user?.is_superuser &&
+                        <TabInfo />
+                    }
+                </div>
+                <Toaster />
+            </div>
         </div>
     )
 }

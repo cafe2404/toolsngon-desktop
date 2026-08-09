@@ -2,28 +2,31 @@ import { JSX } from "react";
 import { Progress } from "@components/ui/progress"
 import { Spinner } from "../../components/ui/spinner";
 import { useUpdater } from "../../contexts/UpdaterContext";
-
+import { useLanguage } from "../../contexts/LanguageContext";
 
 export default function Updater(): JSX.Element {
     const { status, progress, error } = useUpdater()
+    const { t } = useLanguage()
+
     const renderStatus = (): string => {
         switch (status) {
             case "checking":
-                return "Checking for updates..."
+                return t('updater.checking')
             case "available":
-                return "New update available. Preparing download..."
+                return t('updater.available')
             case "downloading":
-                return `Downloading ${Math.round(progress)}%`
+                return t('updater.downloading', { progress: Math.round(progress) })
             case "downloaded":
-                return "Update downloaded — restarting app..."
+                return t('updater.downloaded')
             case "not-available":
-                return "App is already up to date."
+                return t('updater.notAvailable')
             case "error":
-                return `Update failed: ${error || "Unknown error"}`
+                return t('updater.error', { error: error || t('updater.unknownError') })
             default:
-                return "Preparing update.."
+                return t('updater.preparing')
         }
     }
+
     return (
         <>
             <Spinner className="size-12" />
@@ -32,7 +35,7 @@ export default function Updater(): JSX.Element {
             </h1>
             <Progress value={progress} className="w-full" />
             <p className='text-slate-600 font-medium'>
-                Don&#39;t turn off your PC. This will take a while.
+                {t('updater.keepPcOn')}
             </p>
         </>
     )

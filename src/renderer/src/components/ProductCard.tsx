@@ -1,12 +1,13 @@
 import { Clock, Hash, LoaderCircle } from "lucide-react";
 import { Account, UserProduct } from "src/types/global";
 import { useProfiles } from "../contexts/ProfileContext";
+import { useLanguage } from "../contexts/LanguageContext";
 
 import { JSX, useState } from "react";
 
-
 const ProductCard = ({ item }: { item: UserProduct }): JSX.Element => {
     const { addTab, currentProfile, injectScript, switchTab, addProfile, setCurrentProfile, profiles } = useProfiles()
+    const { language, t } = useLanguage()
     const [loading, setLoading] = useState(false)
 
     const handleOpenTab = async (account: Account): Promise<void> => {
@@ -68,6 +69,9 @@ const ProductCard = ({ item }: { item: UserProduct }): JSX.Element => {
         }
         setLoading(false)
     }
+
+    const dateLocale = language === 'vi' ? 'vi-VN' : 'en-US'
+
     return (
         <>
             {
@@ -85,15 +89,15 @@ const ProductCard = ({ item }: { item: UserProduct }): JSX.Element => {
                             <div className="py-2 relative w-full">
                                 <div className="space-y-1.5 w-full">
                                     <h3 onClick={() => handleOpenTab(account)} className="cursor-pointer hover:underline line-clamp-1 text-lg font-semibold leading-6 text-slate-800 ">
-                                        {account?.name ?? `Tài khoản ${account?.id}`}
+                                        {account?.name ?? t('product.accountFallback', { id: account?.id ?? '0' })}
                                     </h3>
                                     <div className="text-sm text-slate-600 font-medium flex items-center gap-2">
                                         <Clock size={16}></Clock>
-                                        Hạn {new Date(item.end_date).toLocaleDateString('vi-VN')}
+                                        {t('product.expiresOn', { date: new Date(item.end_date).toLocaleDateString(dateLocale) })}
                                     </div>
                                     <div className="text-sm text-slate-600 font-medium flex items-center gap-2">
                                         <Hash size={16}></Hash>
-                                        {item.product.title} {item?.account_group?.type ?? "Tạm chờ"}
+                                        {item.product.title} {item?.account_group?.type ?? t('product.pending')}
                                     </div>
                                 </div>
                             </div>
@@ -112,7 +116,7 @@ const ProductCard = ({ item }: { item: UserProduct }): JSX.Element => {
 
                             <button onClick={() => handleOpenTab(account)} className={`${loading && "opacity-50 cursor-not-allowed"} cursor-pointer flex-1 bg-slate-100 rounded-md text-sm hover:bg-slate-200 gap-2 px-2 py-2 flex items-center justify-center font-medium text-slate-600 duration-300`}>
                                 {loading && <LoaderCircle className="animate-spin text-slate-800" size={20}></LoaderCircle>}
-                                {account.is_active ? 'Mở' : 'Bảo trì'}
+                                {account.is_active ? t('product.open') : t('product.maintenance')}
                             </button>
                         </div>
                     </div >

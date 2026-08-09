@@ -13,6 +13,7 @@ import {
     TooltipTrigger,
 } from "./ui/tooltip"
 import { Carousel, CarouselContent, CarouselItem } from "./ui/carousel"
+import { useLanguage } from "../contexts/LanguageContext"
 
 
 type ChatActionType = 'open-guide-video' | 'open-support-guide' | 'capture-screenshot' | 'support-flow' | 'support-menu'
@@ -272,6 +273,7 @@ const ChatPanel = ({ isVisible }: ChatPanelProps): React.JSX.Element => {
     const { currentProfile, currentTab, closeTab, setCurrentProfile, switchTab } = useProfiles()
     const { user, userProducts, appSetting } = useAuth()
     const { closePanel } = usePanel()
+    const { t } = useLanguage()
     const currentProduct = useMemo(() => {
         if (!currentProfile || !currentProfile.account) return undefined
         return userProducts.find(item =>
@@ -947,7 +949,7 @@ const ChatPanel = ({ isVisible }: ChatPanelProps): React.JSX.Element => {
                                             />
                                         )}
                                         {item.guideTitle && (
-                                            <button onClick={() => handleOpenSupportGuide(item)} className="mt-2 text-left cursor-pointer min-w-64 rounded-xl border border-slate-200 bg-white p-3 text-slate-800 shadow-sm">
+                                            <button onClick={() => handleOpenSupportGuide(item)} className="mt-2 text-left cursor-pointer min-w-62 rounded-xl border border-slate-200 bg-white p-3 text-slate-800 shadow-sm">
                                                 <div className="flex items-start gap-3">
                                                     <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50 p-1.5">
                                                         <img src={item.guideProductLogoUrl} alt="Toolsngon" className="h-full w-full object-contain" />
@@ -957,7 +959,7 @@ const ChatPanel = ({ isVisible }: ChatPanelProps): React.JSX.Element => {
                                                             <FileTextIcon size={15} className="shrink-0 text-blue-600" />
                                                             <span className="truncate">{item.guideTitle}</span>
                                                         </div>
-                                                        <div className="mt-1 text-[11px] font-medium uppercase tracking-wide text-slate-400">{item.guideDescription || item.guideContentMarkdown?.slice(0,24)+'...'}</div>
+                                                        <div className="mt-1 text-[11px] font-medium uppercase tracking-wide text-slate-400">{item.guideDescription || item.guideContentMarkdown?.slice(0, 24) + '...'}</div>
                                                     </div>
                                                 </div>
                                                 {item.guideDescription && (
@@ -1065,8 +1067,8 @@ const ChatPanel = ({ isVisible }: ChatPanelProps): React.JSX.Element => {
                     <input
                         value={message}
                         onChange={(event) => setMessage(event.target.value)}
-                        placeholder="Nhập nội dung tin nhắn của bạn"
-                        className="h-8 w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-500"
+                        placeholder={t('supportChat.inputMessagePlaceholder')}
+                    className="h-8 w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-500"
                     />
 
                     <div className="mt-3 flex items-center justify-between gap-3">

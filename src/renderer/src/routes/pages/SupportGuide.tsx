@@ -4,6 +4,7 @@ import Markdown from 'react-native-markdown-display'
 import logoSvg from '../../assets/logo_2.svg'
 import { Button } from '../../components/ui/button'
 import api from '../../lib/axios'
+import { useLanguage } from '../../contexts/LanguageContext'
 
 type SupportGuidePayload = {
   title: string
@@ -84,6 +85,7 @@ const markdownStyles = {
 } as const
 
 function SupportGuide(): React.JSX.Element {
+  const { t } = useLanguage()
   const [payload, setPayload] = useState<SupportGuidePayload | null>(null)
   const [guides, setGuides] = useState<SupportGuideItem[]>([])
   const [showGuideList, setShowGuideList] = useState(false)
@@ -104,7 +106,7 @@ function SupportGuide(): React.JSX.Element {
       const res = await api.get<SupportGuideItem[]>('/api/support/user/guides/')
       setGuides(res.data)
     } catch {
-      setGuidesError('Không thể tải danh sách hướng dẫn.')
+      setGuidesError(t('supportGuide.loadError'))
     } finally {
       setGuidesLoading(false)
     }
@@ -123,7 +125,7 @@ function SupportGuide(): React.JSX.Element {
   const toggleGuideList = (): void => {
     setShowGuideList(prev => !prev)
   }
-  const content = payload?.contentMarkdown || payload?.description || 'Chưa có nội dung hướng dẫn.'
+  const content = payload?.contentMarkdown || payload?.description || t('supportGuide.emptyContent')
   const markdownContent = useMemo(() => content, [content])
   const handleLinkPress = (url: string): boolean => {
     window.api.openExternal(url)
@@ -141,7 +143,7 @@ function SupportGuide(): React.JSX.Element {
               <img src={payload?.productLogoUrl || logoSvg} alt={payload?.productTitle || 'Toolsngon'} className="h-full w-full object-contain" />
             </div>
             <div className="min-w-0">
-              <h1 className="truncate text-lg font-semibold">{payload?.title || 'Hướng dẫn hỗ trợ'}</h1>
+              <h1 className="truncate text-lg font-semibold">{payload?.title || t('supportGuide.fallbackTitle')}</h1>
               {(payload?.productTitle || payload?.description) && (
                 <p className="mt-0.5 text-left truncate text-sm text-slate-500">{payload.productTitle || payload.description}</p>
               )}
@@ -151,7 +153,7 @@ function SupportGuide(): React.JSX.Element {
             {payload?.guideUrl && (
               <Button type="button" onClick={() => window.api.openExternal(payload.guideUrl!)}>
                 <ExternalLinkIcon size={16} />
-                Mở file gốc
+                {t('supportGuide.openOriginalFile')}
               </Button>
             )}
           </div>
@@ -161,21 +163,21 @@ function SupportGuide(): React.JSX.Element {
         <div className="absolute top-4 left-4">
           <Button type="button" variant="outline" onClick={toggleGuideList}>
             <BookOpenIcon size={16} />
-            Tất cả hướng dẫn
+            {t('supportGuide.allGuides')}
           </Button>
         </div>
         {showGuideList && (
           <aside className="w-80 shrink-0 overflow-y-auto border-r border-slate-200 bg-slate-50 z-50 p-4">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-800">Tất cả hướng dẫn</h2>
+              <h2 className="text-sm font-semibold text-slate-800">{t('supportGuide.allGuides')}</h2>
               <Button variant={'outline'} type="button" size="icon-sm" onClick={() => setShowGuideList(false)}>
                 <PanelLeftClose></PanelLeftClose>
               </Button>
             </div>
-            {guidesLoading && <div className="text-sm text-slate-500">Đang tải...</div>}
+            {guidesLoading && <div className="text-sm text-slate-500">{t('common.loading')}</div>}
             {guidesError && <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{guidesError}</div>}
             {!guidesLoading && !guidesError && guides.length === 0 && (
-              <div className="text-sm text-slate-500">Chưa có hướng dẫn nào cho app của bạn.</div>
+              <div className="text-sm text-slate-500">{t('supportGuide.emptyGuides')}</div>
             )}
             <div className="space-y-2">
               {guides.map(guide => (
@@ -191,7 +193,7 @@ function SupportGuide(): React.JSX.Element {
                     </div>
                     <div className="min-w-0">
                       <div className="truncate text-sm font-semibold text-slate-800">{guide.title}</div>
-                      <div className="mt-0.5 truncate text-xs text-slate-500">{guide.product_title || 'Hướng dẫn chung'}</div>
+                      <div className="mt-0.5 truncate text-xs text-slate-500">{guide.product_title || t('supportGuide.generalGuide')}</div>
                     </div>
                   </div>
                   {guide.description && <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">{guide.description}</p>}

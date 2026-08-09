@@ -4,9 +4,11 @@
 
 .navbar {
   -webkit-app-region: drag;
+  cursor: move; 
 }
 
 .navbar .no-drag,
+.navbar a,
 .navbar button {
   -webkit-app-region: no-drag;
 }
@@ -43,7 +45,6 @@ body {
   isolation: isolate;
   overflow: hidden;
   border: 1px solid transparent;
-  box-shadow: 0 6px 16px rgb(37 99 235 / 0.14);
 }
 
 .support-chat-button::before {

@@ -3,8 +3,10 @@ import { Loader2, Plus, XIcon } from "lucide-react"
 import { useProfiles } from "@renderer/contexts/ProfileContext"
 import { Reorder, motion } from "framer-motion";
 import React, { useMemo, useCallback } from "react";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const TabBar = () => {
+    const { t } = useLanguage()
     const {
         switchTab,
         currentProfile,
@@ -44,16 +46,17 @@ const TabBar = () => {
         const newTab = {
             id: newTabId,
             name: 'new-tab',
-            title: 'Tab mới',
+            title: t('tabBar.newTab'),
             url: 'https://www.google.com',
             currentUrl: 'https://www.google.com',
             favicon: 'https://www.google.com/favicon.ico'
         }
         addTab(currentProfile.id, newTab)
-    }, [currentProfile, addTab]);
+    }, [currentProfile, addTab, t]);
     if (!currentProfile) return <></>;
+    if (!currentProfile.account?.is_create_tab) return <></>;
     return (
-        <div className='no-scrollbar w-full'>
+        <div className='no-scrollbar flex-1 flex items-center gap-1.5 w-full py-1.5 bg-slate-100 navbar pl-2 pr-36'>
             {allTabs.length > 0 && currentProfile.id !== '1' ?
                 <div className="" onWheel={onWheelHorizontal}>
                     <Reorder.Group
@@ -106,7 +109,7 @@ const TabBar = () => {
                                                     e.stopPropagation();
                                                     closeTab(currentProfile.id, tab.id);
                                                 }}
-                                                className=" hover:bg-slate-200 lg:flex hidden items-center justify-center min-w-4 size-4 rounded-full duration-300 flex-shrink-0"
+                                                className=" hover:bg-slate-200 lg:flex hidden items-center justify-center min-w-4 size-4 rounded-full duration-300 shrink-0"
                                             >
                                                 <XIcon size={14} />
                                             </button>
@@ -127,7 +130,6 @@ const TabBar = () => {
                     {currentTab?.title}
                 </div>
             }
-
         </div>
     )
 }

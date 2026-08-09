@@ -19,6 +19,19 @@ declare global {
         getPayload: () => Promise<SupportGuidePayload | null>
         onPayloadUpdated: (callback: (payload: SupportGuidePayload | null) => void) => () => void
       }
+      authLoginView: {
+        open: (
+          url: string,
+          bounds: { x: number; y: number; width: number; height: number }
+        ) => Promise<boolean>
+        setBounds: (bounds: {
+          x: number
+          y: number
+          width: number
+          height: number
+        }) => Promise<boolean>
+        close: () => Promise<boolean>
+      }
       onBrowserViewUpdate: (
         callback: (payload: { id: string; updates: Record<string, unknown> }) => void
       ) => () => void
@@ -56,14 +69,20 @@ declare global {
         destroy: (id: string, profileId?: string) => Promise<boolean>
         injectScript: (id: string, script: string) => Promise<boolean>
         toggleFullscreen: (id: string) => Promise<boolean>
-        onNewTab: (callback: (payload: string | {
-          id?: string
-          url: string
-          title?: string
-          viewReady?: boolean
-          webContentsId?: number
-          forceCreate?: boolean
-        }) => void) => () => void
+        onNewTab: (
+          callback: (
+            payload:
+              | string
+              | {
+                  id?: string
+                  url: string
+                  title?: string
+                  viewReady?: boolean
+                  webContentsId?: number
+                  forceCreate?: boolean
+                }
+          ) => void
+        ) => () => void
         getCookies: (id: string) => Promise<Cookie[]>
         captureScreenshot: (id: string) => Promise<string | null>
         getInfo: (id: string) => Promise<{

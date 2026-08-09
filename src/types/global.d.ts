@@ -128,4 +128,5 @@ export type UpdateError = {
 export type Category = {
   id: number
   name: string
+  icon?: string | null
 }
