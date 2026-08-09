@@ -4,6 +4,7 @@ import { useAuth } from '@contexts/AuthContext'
 import Dashboard from '../routes/pages/Dashboard'
 import { Account } from 'src/types/global'
 import logo from '../assets/favicon.ico'
+import { desktop } from '@renderer/lib/desktop'
 
 export type Tab = {
   id: string
@@ -18,6 +19,7 @@ export type Tab = {
   webContentsId?: number
   component?: React.ComponentType
   viewReady?: boolean
+  isDetached?: boolean
 }
 
 export type Profile = {
@@ -44,6 +46,7 @@ export type ProfileContextType = {
   switchTab: (profileId: string, tabId: string) => void
   updateTab: (profileId: string, tabId: string, updates: Partial<Tab>) => void
   updateProfile: (profileId: string, updates: Partial<Profile>) => void
+  openProfileWindow: (profileId: string) => Promise<boolean>
   goBack: (tabId: string) => void
   goForward: (tabId: string) => void
   reload: (tabId: string) => void
@@ -94,11 +97,34 @@ export function ProfileProvider({ children }: { children: ReactNode }): React.JS
     if (!isAuthenticated) {
       webviewsRef.current.clear()
       // Destroy all BrowserViews when logging out
-      window.api?.browserView?.destroyAll()
+      desktop.browser.tabs.destroyAll()
       setProfiles([defaultProfile])
       setCurrentProfileId('1')
     }
   }, [isAuthenticated])
+
+  useEffect(() => {
+    return desktop.browser.tabs.onDetachedWindowClosed(({ id, profileId }) => {
+      let nextProfileId = profileId
+      setProfiles((prev) =>
+        prev.map((profile) => {
+          const hasTab = profile.tabs.some((tab) => tab.id === id)
+          if (!hasTab) return profile
+          nextProfileId = profile.id
+          return {
+            ...profile,
+            currentTabId: id,
+            tabs: profile.tabs.map((tab) =>
+              tab.id === id ? { ...tab, isDetached: false, viewReady: true } : tab
+            )
+          }
+        })
+      )
+      if (nextProfileId) {
+        setCurrentProfileId(nextProfileId)
+      }
+    })
+  }, [])
 
   const addProfile = (profile: Profile): void => {
     setProfiles((prev) => [...prev, profile])
@@ -109,7 +135,7 @@ export function ProfileProvider({ children }: { children: ReactNode }): React.JS
     if (profileId === '1') return
 
     // Destroy all BrowserViews for this profile
-    window.api?.browserView?.destroyProfile(profileId)
+    desktop.browser.profiles.destroy(profileId)
 
     const removedIndex = profiles.findIndex((p) => p.id === profileId)
     const newProfiles = profiles.filter((p) => p.id !== profileId)
@@ -143,7 +169,7 @@ export function ProfileProvider({ children }: { children: ReactNode }): React.JS
     if (tabId === '1') return
 
     // Destroy the BrowserView for this tab
-    window.api?.browserView?.destroy(tabId, profileId)
+    desktop.browser.tabs.destroy(tabId, profileId)
 
     setProfiles((prev) =>
       prev.map((p) => {
@@ -174,21 +200,41 @@ export function ProfileProvider({ children }: { children: ReactNode }): React.JS
     setProfiles((prev) => prev.map((p) => (p.id === profileId ? { ...p, ...updates } : p)))
   }
 
+  const openProfileWindow = async (profileId: string): Promise<boolean> => {
+    const profile = profiles.find((p) => p.id === profileId)
+    if (!profile || profile.type !== 'external') return false
+
+    const tab =
+      profile.tabs.find((item) => item.id === profile.currentTabId && !item.component) ??
+      profile.tabs.find((item) => !item.component)
+    if (!tab) return false
+
+    const opened = await desktop.browser.tabs.openWindow(
+      tab.id,
+      profileId,
+      tab.title || profile.name
+    )
+    if (!opened) return false
+
+    updateTab(profileId, tab.id, { isDetached: true, viewReady: true })
+    return true
+  }
+
   // --- ELECTRON NAVIGATION ---
   const goBack = (tabId: string): void => {
-    window.api?.browserView?.back(tabId)
+    desktop.browser.tabs.back(tabId)
   }
 
   const goForward = (tabId: string): void => {
-    window.api?.browserView?.forward(tabId)
+    desktop.browser.tabs.forward(tabId)
   }
 
   const reload = (tabId: string): void => {
-    window.api?.browserView?.reload(tabId)
+    desktop.browser.tabs.reload(tabId)
   }
 
   const stop = (tabId: string): void => {
-    window.api?.browserView?.stop(tabId)
+    desktop.browser.tabs.stop(tabId)
   }
 
   const reorderTabs = (profileId: string, dragId: string, hoverId: string): void => {
@@ -209,7 +255,7 @@ export function ProfileProvider({ children }: { children: ReactNode }): React.JS
   const injectScript = async (tabId: string, script: string): Promise<boolean> => {
     if (!script || !tabId) return false
     try {
-      const result = await window.api?.browserView?.injectScript(tabId, script)
+      const result = await desktop.browser.tabs.injectScript(tabId, script)
       return result === true
     } catch {
       return false
@@ -219,7 +265,7 @@ export function ProfileProvider({ children }: { children: ReactNode }): React.JS
   const toggleFullscreen = async (tabId: string): Promise<boolean> => {
     if (!tabId) return false
     try {
-      const result = await window.api?.browserView?.toggleFullscreen(tabId)
+      const result = await desktop.browser.tabs.toggleFullscreen(tabId)
       return result === true
     } catch {
       return false
@@ -241,6 +287,7 @@ export function ProfileProvider({ children }: { children: ReactNode }): React.JS
         switchTab,
         updateTab,
         updateProfile,
+        openProfileWindow,
         goBack,
         goForward,
         reload,

@@ -1,20 +1,21 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 import Axios, { AxiosRequestHeaders } from 'axios'
+import { desktop } from '@renderer/lib/desktop'
 
 const BASE_URL = import.meta.env.VITE_SERVER_URL
 async function getStoredTokens(): Promise<{ access: string | null; refresh: string | null }> {
-  return window.auth.get()
+  return desktop.auth.tokens.get()
 }
 
 async function setStoredTokens(tokens: {
   access: string | null
   refresh: string | null
 }): Promise<void> {
-  if (typeof window !== 'undefined' && window.auth) {
+  if (typeof window !== 'undefined' && desktop.auth.tokens) {
     if (tokens.access && tokens.refresh) {
-      await window.auth.save(tokens.access, tokens.refresh)
+      await desktop.auth.tokens.save(tokens.access, tokens.refresh)
     } else {
-      await window.auth.clear()
+      await desktop.auth.tokens.clear()
     }
   }
 }
@@ -81,8 +82,8 @@ api.interceptors.response.use(
       try {
         const { refresh } = await getStoredTokens()
         if (!refresh) throw new Error('No refresh token')
-        const device_uuid = await window.os.getDeviceUUID()
-        const appInfo = await window.os.getAppInfo()
+        const device_uuid = await desktop.app.getDeviceUUID()
+        const appInfo = await desktop.app.getInfo()
         const refreshRes = await Axios.post(`${BASE_URL}/api/app_auth/refresh/`, {
           refresh,
           device_uuid,

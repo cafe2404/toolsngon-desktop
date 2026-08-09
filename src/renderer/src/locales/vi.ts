@@ -40,7 +40,8 @@ const vi = {
     title: 'Hướng dẫn sử dụng Toolsngon',
     subtitle: 'Vui lòng xem kĩ hướng dẫn, nếu gặp vấn đề gì vui lòng liên hệ admin.',
     chooseAccountTitle: 'Chọn tài khoản',
-    chooseAccountDescription: 'Chọn tài khoản cần đăng nhập trong danh sách tài khoản được chia sẻ của bạn',
+    chooseAccountDescription:
+      'Chọn tài khoản cần đăng nhập trong danh sách tài khoản được chia sẻ của bạn',
     openTabTitle: 'Mở tab',
     openTabDescription: 'Ấn nút mở để tạo tab đã đăng nhập tài khoản',
     waitTitle: 'Chờ đợi',
@@ -73,6 +74,15 @@ const vi = {
     emptyGuides: 'Chưa có hướng dẫn nào cho app của bạn.',
     generalGuide: 'Hướng dẫn chung'
   },
+  sidebar: {
+    navigation: 'Điều hướng',
+    accountManager: 'Quản lý tài khoản',
+    accountStore: 'Cửa hàng tài khoản',
+    userGuide: 'Hướng dẫn sử dụng',
+    openApps: 'Ứng dụng đang mở',
+    expand: 'Mở rộng',
+    collapse: 'Thu gọn'
+  },
   tabControl: {
     accountManager: 'Quản lý tài khoản',
     supportChat: 'Chat hỗ trợ',
@@ -86,9 +96,9 @@ const vi = {
   profileBar: {
     active: 'Đang mở'
   },
-  supportChat :{
+  supportChat: {
     supportChat: 'Chat hỗ trợ',
-    inputMessagePlaceholder:"Nhập nội dung cần hỗ trợ..."
+    inputMessagePlaceholder: 'Nhập nội dung cần hỗ trợ...'
   }
 } as const
 

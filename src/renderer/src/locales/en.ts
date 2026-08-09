@@ -73,9 +73,18 @@ const en = {
     emptyGuides: 'No guides are available for your app yet.',
     generalGuide: 'General guide'
   },
+  sidebar: {
+    navigation: 'Navigation',
+    accountManager: 'Account manager',
+    accountStore: 'Account store',
+    userGuide: 'User guide',
+    openApps: 'Open apps',
+    expand: 'Expand',
+    collapse: 'Collapse'
+  },
   tabControl: {
     accountManager: 'Account manager',
-    
+
     noNotifications: 'No notifications right now',
     settings: 'Settings',
     logout: 'Log out'
@@ -86,9 +95,9 @@ const en = {
   profileBar: {
     active: 'Active'
   },
-  supportChat :{
+  supportChat: {
     supportChat: 'Support chat',
-    inputMessagePlaceholder:"Enter the content you need assistance with..."
+    inputMessagePlaceholder: 'Enter the content you need assistance with...'
   }
 } as const
 

@@ -1,16 +1,19 @@
-import { XIcon } from 'lucide-react'
+import {  XIcon } from 'lucide-react'
 import { useProfiles } from '../contexts/ProfileContext'
 import { Button } from './ui/button'
 import { cn } from '../lib/utils'
 
 const OpenApps = ({ collapsed = false }: { collapsed?: boolean }): React.JSX.Element => {
-  const { profiles, removeProfile, setCurrentProfile, currentProfile } = useProfiles()
+  const { profiles, removeProfile, setCurrentProfile, currentProfile } =
+    useProfiles()
   const externalProfiles = profiles.filter((p) => p.type === 'external')
   const handleRemoveProfile = (profileId: string): void => {
     removeProfile(profileId)
   }
   return (
-    <div className={`flex flex-col gap-1.5 duration-200 overflow-y-hidden w-full`}>
+    <div
+      className={`flex flex-col gap-1.5 transition-[width] duration-200 overflow-y-hidden w-full`}
+    >
       <div className="w-full flex flex-col gap-2  h-full overflow-y-auto">
         {externalProfiles.map((profile) => (
           <Button
@@ -34,22 +37,39 @@ const OpenApps = ({ collapsed = false }: { collapsed?: boolean }): React.JSX.Ele
             >
               <div className="flex items-center gap-2">
                 <div className="size-4 relative">
-                  <img className="w-full h-full object-cover rounded" src={profile.icon} />
+                  <img
+                    className="w-full h-full object-cover rounded"
+                    src={profile.icon}
+                    alt={profile.name}
+                  />
                 </div>
                 {!collapsed && <p className=" text-sm">{profile.name}</p>}
               </div>
               {!collapsed && (
-                <Button
-                  className="opacity-0 group-hover:opacity-100"
-                  variant={'ghost'}
-                  size={'icon-xs'}
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    handleRemoveProfile(profile.id)
-                  }}
-                >
-                  <XIcon />
-                </Button>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
+                  {/* <Button
+                    variant={'ghost'}
+                    size={'icon-xs'}
+                    title="Mở ra cửa sổ riêng"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      openProfileWindow(profile.id)
+                    }}
+                  >
+                    <ExternalLinkIcon />
+                  </Button> */}
+                  <Button
+                    variant={'ghost'}
+                    size={'icon-xs'}
+                    title="Đóng ứng dụng"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      handleRemoveProfile(profile.id)
+                    }}
+                  >
+                    <XIcon />
+                  </Button>
+                </div>
               )}
             </div>
           </Button>

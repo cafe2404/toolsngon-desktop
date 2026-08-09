@@ -19,7 +19,10 @@ async function ensureOpenOptionsFallback(extensionDir: string): Promise<void> {
       .map((filePath) => String(filePath).replace(/^\//, ''))
       .filter((filePath) => filePath.endsWith('.js'))
 
-    const optionsPage = String(manifest?.options_ui?.page || manifest?.options_page || '').replace(/^\//, '')
+    const optionsPage = String(manifest?.options_ui?.page || manifest?.options_page || '').replace(
+      /^\//,
+      ''
+    )
     if (!optionsPage || backgroundFiles.length === 0) return
 
     const fallbackScript = `/* ${OPTIONS_FALLBACK_MARKER} */

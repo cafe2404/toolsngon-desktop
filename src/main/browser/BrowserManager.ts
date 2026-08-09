@@ -17,31 +17,34 @@ import * as ChromeLauncher from 'chrome-launcher'
 import fs from 'fs'
 import https from 'https'
 import http from 'http'
-import { prepareExtension } from './utils'
-import { Account } from '../types/global'
-import launchChrome from './openChrome'
-import { blockedUrlsManager } from './blockedUrls'
-
-const VIEW_TOP_OFFSET = 44
+import { prepareExtension } from '../utils'
+import { Account } from '../../types/global'
+import launchChrome from '../services/automation/openChrome'
+import { blockedUrlsManager } from '../services/storage/BlockedUrlsManager'
+import { getExtensionPanelKey, resolveExtensionPanelUrl } from './ExtensionManager'
+import { getGoogleFaviconUrl, sendAppProtocolUrl } from './NavigationManager'
+import { addProfileTab, removeProfileTab } from './ProfileManager'
+import {
+  clearSessionData,
+  getDeviceArguments,
+  getProfilePartition,
+  setCookiesForSession
+} from './SessionManager'
+import {
+  computeBounds,
+  computeFullscreenBounds,
+  destroyWebContentsView,
+  VIEW_TOP_OFFSET
+} from './TabManager'
 
 type ExtensionTabCreateDetails = {
   url?: string
   active?: boolean
 }
 
-type WebContentsViewManager = {
+export type WebContentsViewManager = {
   getSessions(): Electron.Session[]
   destroyAll(): void
-}
-
-function destroyWebContentsView(view: WebContentsView): void {
-  try {
-    if (!view.webContents.isDestroyed()) {
-      view.webContents.close()
-    }
-  } catch {
-    /* noop */
-  }
 }
 
 export function registerWebContentsViewManager(mainWindow: BrowserWindow): WebContentsViewManager {
@@ -55,29 +58,14 @@ export function registerWebContentsViewManager(mainWindow: BrowserWindow): WebCo
   // Store previous bounds to support fullscreen toggle per WebContentsView
   const viewPreviousBounds = new Map<string, Electron.Rectangle>()
   let activeView: WebContentsView | null = null
+  const detachedWindows = new Map<string, BrowserWindow>() // key: tabId, value: detached window
   const extensionPanelViews = new Map<string, WebContentsView>() // key: profileId:extensionId
   const extensionPaths = new Map<string, string>() // key: profileId:extensionId
+  const extensionIdAliases = new Map<string, string>() // key: profileId:configuredExtensionId, value: loaded extension id
   const chromeExtensionManagers = new Map<string, ElectronChromeExtensions>() // key: profile partition
 
   const handleAppProtocolUrl = (url?: string): boolean => {
-    if (!url?.startsWith('toolsngon://')) return false
-    try {
-      mainWindow.webContents.send('deep-link', url)
-      return true
-    } catch {
-      return false
-    }
-  }
-
-  const getGoogleFaviconUrl = (pageUrl?: string): string | undefined => {
-    if (!pageUrl) return undefined
-    try {
-      const parsedUrl = new URL(pageUrl)
-      if (!['http:', 'https:'].includes(parsedUrl.protocol)) return undefined
-      return `https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(parsedUrl.href)}/&size=40`
-    } catch {
-      return undefined
-    }
+    return sendAppProtocolUrl(mainWindow, url)
   }
 
   const isViewAttached = (view: WebContentsView): boolean => {
@@ -125,6 +113,7 @@ export function registerWebContentsViewManager(mainWindow: BrowserWindow): WebCo
   }
 
   const showActiveView = (view: WebContentsView): void => {
+    if (Array.from(detachedWindows.keys()).some((id) => views.get(id) === view)) return
     if (activeView && activeView !== view) {
       closeExtensionPanel()
       removeWebContentsView(activeView)
@@ -138,6 +127,137 @@ export function registerWebContentsViewManager(mainWindow: BrowserWindow): WebCo
     }
   }
 
+  const getDetachedViewBounds = (window: BrowserWindow): Electron.Rectangle => {
+    const content = window.getContentBounds()
+    return computeBounds({
+      x: 0,
+      y: 0,
+      width: content.width,
+      height: content.height
+    })
+  }
+
+  const restoreDetachedTabToApp = (id: string, profileId?: string, notify = true): boolean => {
+    const detachedWindow = detachedWindows.get(id)
+    const view = getView(id)
+    if (!detachedWindow || !view || view.webContents.isDestroyed()) return false
+
+    detachedWindows.delete(id)
+    try {
+      detachedWindow.contentView.removeChildView(view)
+    } catch {
+      /* noop */
+    }
+    try {
+      if (!detachedWindow.isDestroyed()) {
+        detachedWindow.removeAllListeners('close')
+        detachedWindow.close()
+      }
+    } catch {
+      /* noop */
+    }
+
+    showActiveView(view)
+    try {
+      view.setBounds(computeFullscreenBounds(mainWindow))
+    } catch {
+      /* noop */
+    }
+    try {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.focus()
+    } catch {
+      /* noop */
+    }
+    if (notify) {
+      mainWindow.webContents.send('bv:detached-window-closed', { id, profileId })
+    }
+    return true
+  }
+
+  const closeDetachedWindowOnly = (id: string, view?: WebContentsView): void => {
+    const detachedWindow = detachedWindows.get(id)
+    if (!detachedWindow) return
+    detachedWindows.delete(id)
+    if (view) {
+      try {
+        detachedWindow.contentView.removeChildView(view)
+      } catch {
+        /* noop */
+      }
+    }
+    try {
+      if (!detachedWindow.isDestroyed()) {
+        detachedWindow.removeAllListeners('close')
+        detachedWindow.close()
+      }
+    } catch {
+      /* noop */
+    }
+  }
+
+  const openDetachedWindow = (id: string, profileId?: string, title?: string): boolean => {
+    const view = getView(id)
+    if (!view || view.webContents.isDestroyed()) return false
+
+    const existingWindow = detachedWindows.get(id)
+    if (existingWindow && !existingWindow.isDestroyed()) {
+      existingWindow.focus()
+      return true
+    }
+
+    closeExtensionPanel()
+    removeWebContentsView(view)
+    if (activeView === view) activeView = null
+
+    const detachedWindow = new BrowserWindow({
+      width: 1280,
+      height: 860,
+      minWidth: 720,
+      minHeight: 480,
+      title: title || view.webContents.getTitle() || 'ToolsNgon',
+      autoHideMenuBar: true,
+      webPreferences: {
+        sandbox: false
+      }
+    })
+
+    detachedWindows.set(id, detachedWindow)
+    detachedWindow.contentView.addChildView(view)
+    view.setBounds(getDetachedViewBounds(detachedWindow))
+
+    detachedWindow.on('resize', () => {
+      try {
+        view.setBounds(getDetachedViewBounds(detachedWindow))
+      } catch {
+        /* noop */
+      }
+    })
+    detachedWindow.on('maximize', () => {
+      try {
+        view.setBounds(getDetachedViewBounds(detachedWindow))
+      } catch {
+        /* noop */
+      }
+    })
+    detachedWindow.on('unmaximize', () => {
+      try {
+        view.setBounds(getDetachedViewBounds(detachedWindow))
+      } catch {
+        /* noop */
+      }
+    })
+    detachedWindow.on('close', (event) => {
+      if (!detachedWindows.has(id)) return
+      event.preventDefault()
+      restoreDetachedTabToApp(id, profileId)
+    })
+
+    detachedWindow.show()
+    detachedWindow.focus()
+    return true
+  }
+
   const createFallbackExtensionTab = async (
     profileId: string | undefined,
     partition: string,
@@ -149,17 +269,11 @@ export function registerWebContentsViewManager(mainWindow: BrowserWindow): WebCo
         sandbox: false,
         devTools: is.dev,
         partition,
-        preload: join(__dirname, '../preload/device.js')
+        preload: join(__dirname, '../../preload/device.js')
       }
     })
     views.set(viewId, view)
-    if (profileId) {
-      if (!profileViews.has(profileId)) {
-        profileViews.set(profileId, new Set())
-      }
-      profileViews.get(profileId)!.add(viewId)
-      viewProfiles.set(viewId, profileId)
-    }
+    addProfileTab(profileViews, viewProfiles, profileId, viewId)
     try {
       const activeBounds = activeView?.getBounds()
       if (activeBounds) {
@@ -255,23 +369,38 @@ export function registerWebContentsViewManager(mainWindow: BrowserWindow): WebCo
     return undefined
   }
 
-  const computeBounds = (bounds: {
-    x: number
-    y: number
-    width: number
-    height: number
-  }): Electron.Rectangle => bounds as Electron.Rectangle
+  const loadAccountExtensions = async (
+    electronSession: Electron.Session,
+    ownerKey: string,
+    account?: Account
+  ): Promise<void> => {
+    if (!account?.extensions) return
 
-  const computeFullscreenBounds = (): Electron.Rectangle => {
-    const content = mainWindow.getContentBounds()
-    const isWinFs = mainWindow.isFullScreen?.() === true
-    const topOffset = isWinFs ? 0 : VIEW_TOP_OFFSET
-    return computeBounds({
-      x: 0,
-      y: topOffset,
-      width: content.width,
-      height: content.height - topOffset
-    })
+    for (const ext of account.extensions) {
+      try {
+        const extensionPath = await prepareExtension(ext.zip_file, ext.extension_id)
+        const loadedExtensions = electronSession.extensions.getAllExtensions()
+        const existingExtension = loadedExtensions.find(
+          (loadedExtension) =>
+            loadedExtension.id === ext.extension_id ||
+            extensionPaths.get(`${ownerKey}:${loadedExtension.id}`) === extensionPath
+        )
+        const loadedExtension =
+          existingExtension ||
+          (await electronSession.extensions.loadExtension(extensionPath, {
+            allowFileAccess: true
+          }))
+        const actualExtensionId = loadedExtension.id
+        const configuredKey = `${ownerKey}:${ext.extension_id}`
+        const actualKey = `${ownerKey}:${actualExtensionId}`
+
+        extensionIdAliases.set(configuredKey, actualExtensionId)
+        extensionPaths.set(configuredKey, extensionPath)
+        extensionPaths.set(actualKey, extensionPath)
+      } catch (err) {
+        console.error(`⚠️ Failed to load extension ${ext.name}:`, err)
+      }
+    }
   }
 
   const attachView = async (
@@ -284,28 +413,15 @@ export function registerWebContentsViewManager(mainWindow: BrowserWindow): WebCo
     let view = views.get(id)
     if (!view) {
       // Use profileId for partition if provided, otherwise fallback to tab id
-      const partition = profileId ? `persist:profile-${profileId}` : `persist:profile-${id}`
-      let additionalArguments
-      if (account?.device) {
-        const device = account?.device
-        additionalArguments = [
-          `--screenResolution=${device.screen_resolution}`,
-          `--language=${device.language}`,
-          `--timezone=${device.timezone}`,
-          `--platform=${device.platform}`,
-          `--hardwareConcurrency=${device.hardware_concurrency}`,
-          `--deviceMemory=${device.device_memory}`
-        ]
-      } else {
-        additionalArguments = null
-      }
+      const partition = getProfilePartition(profileId, id)
+      const additionalArguments = getDeviceArguments(account)
       view = new WebContentsView({
         webPreferences: {
           sandbox: false,
           devTools: is.dev,
           partition,
-          additionalArguments: additionalArguments,
-          preload: join(__dirname, '../preload/device.js')
+          additionalArguments,
+          preload: join(__dirname, '../../preload/device.js')
         }
       })
       views.set(id, view)
@@ -314,13 +430,7 @@ export function registerWebContentsViewManager(mainWindow: BrowserWindow): WebCo
         viewAccounts.set(id, account)
       }
       // Track this tab in the profile
-      if (profileId) {
-        if (!profileViews.has(profileId)) {
-          profileViews.set(profileId, new Set())
-        }
-        profileViews.get(profileId)!.add(id)
-        viewProfiles.set(id, profileId)
-      }
+      addProfileTab(profileViews, viewProfiles, profileId, id)
 
       if (account?.device?.ip_address) {
         // Ví dụ: "http://gbpTxemouE:u0CxVMNM4aob777041@103.161.179.43:49697"
@@ -354,45 +464,12 @@ export function registerWebContentsViewManager(mainWindow: BrowserWindow): WebCo
       }
       const session = view.webContents.session
       const chromeExtensions = getChromeExtensions(profileId, session, partition)
-      chromeExtensions.addTab(view.webContents, mainWindow)
       if (session && account?.cookies) {
-        await Promise.all(
-          account?.cookies.map((c) => {
-            const isHost = c.name.startsWith('__Host-')
-            const isSecurePrefix = c.name.startsWith('__Secure-')
-            const cookieObj: Electron.CookiesSetDetails = {
-              url: `${c.secure || isHost || isSecurePrefix ? 'https' : 'http'}://${(c.domain ?? '').replace(/^\./, '')}${c.path || '/'}`,
-              name: c.name,
-              value: c.value,
-              path: isHost ? '/' : c.path || '/',
-              secure: isHost || isSecurePrefix ? true : c.secure || false,
-              httpOnly: c.httpOnly || false,
-              expirationDate: c.expirationDate
-            }
-            if (!isHost && c.domain) {
-              cookieObj.domain = c.domain
-            }
-            session.cookies
-              .set(cookieObj)
-              .catch((err) => console.error('Set cookie fail', c.name, err))
-          })
-        )
+        await setCookiesForSession(session, account.cookies)
         console.log('Set cookies successfully')
       }
-      if (account?.extensions) {
-        for (const ext of account.extensions) {
-          try {
-            const extensionPath = await prepareExtension(ext.zip_file, ext.extension_id)
-            await view.webContents.session.extensions.loadExtension(extensionPath, {
-              allowFileAccess: true
-            })
-            const extensionKey = `${profileId || id}:${ext.extension_id}`
-            extensionPaths.set(extensionKey, extensionPath)
-          } catch (err) {
-            console.error(`⚠️ Failed to load extension ${ext.name}:`, err)
-          }
-        }
-      }
+      await loadAccountExtensions(session, profileId || id, account)
+      chromeExtensions.addTab(view.webContents, mainWindow)
       view.webContents.setWindowOpenHandler((details) => {
         try {
           if (handleAppProtocolUrl(details?.url)) {
@@ -637,7 +714,7 @@ export function registerWebContentsViewManager(mainWindow: BrowserWindow): WebCo
     if (!profileId || !extension?.extension_id) return { opened: false }
 
     const extensionId = extension.extension_id
-    const panelKey = `${profileId}:${extensionId}`
+    const panelKey = getExtensionPanelKey(profileId, extensionId)
     const existingPanel = extensionPanelViews.get(panelKey)
     if (existingPanel && isViewAttached(existingPanel)) {
       closeExtensionPanel(panelKey)
@@ -646,7 +723,7 @@ export function registerWebContentsViewManager(mainWindow: BrowserWindow): WebCo
 
     closeExtensionPanel()
 
-    const partition = `persist:profile-${profileId}`
+    const partition = getProfilePartition(profileId, profileId)
     let extensionPath = extensionPaths.get(panelKey)
     if (!extensionPath && extension.zip_file) {
       try {
@@ -656,54 +733,8 @@ export function registerWebContentsViewManager(mainWindow: BrowserWindow): WebCo
         console.error(`⚠️ Failed to prepare extension ${extensionId}:`, err)
       }
     }
-    const explicitPanelUrl =
-      extension.popup_url ||
-      extension.panel_url ||
-      extension.sidebar_url ||
-      extension.popupUrl ||
-      extension.sidebarUrl
-    let panelUrl = explicitPanelUrl
-
-    if (!panelUrl) {
-      if (extensionPath) {
-        try {
-          const manifest = JSON.parse(
-            await fs.promises.readFile(join(extensionPath, 'manifest.json'), 'utf-8')
-          )
-          const candidatePaths = [
-            manifest?.action?.default_popup ||
-              manifest?.browser_action?.default_popup ||
-              manifest?.page_action?.default_popup,
-            manifest?.side_panel?.default_path,
-            manifest?.sidebar_action?.default_panel,
-            manifest?.options_ui?.page,
-            manifest?.options_page,
-            'popup.html',
-            'options.html',
-            'index.html'
-          ]
-            .filter(Boolean)
-            .map((candidatePath) => String(candidatePath).replace(/^\//, ''))
-
-          const manifestPanelPath =
-            candidatePaths.find((candidatePath) =>
-              fs.existsSync(join(extensionPath, candidatePath))
-            ) || candidatePaths[0]
-
-          if (manifestPanelPath) {
-            panelUrl = `chrome-extension://${extensionId}/${manifestPanelPath}`
-          }
-        } catch (err) {
-          console.error(`⚠️ Failed to read manifest for extension ${extensionId}:`, err)
-        }
-      }
-    }
-
-    if (!panelUrl) {
-      panelUrl = `chrome-extension://${extensionId}/popup.html`
-    } else if (!/^(https?:|file:|chrome-extension:)/i.test(panelUrl)) {
-      panelUrl = `chrome-extension://${extensionId}/${String(panelUrl).replace(/^\//, '')}`
-    }
+    const panelUrl = await resolveExtensionPanelUrl(extension, extensionPath)
+    if (!panelUrl) return { opened: false }
 
     const panelView = new WebContentsView({
       webPreferences: {
@@ -766,27 +797,7 @@ export function registerWebContentsViewManager(mainWindow: BrowserWindow): WebCo
       const v = getView(id)
       const session = v?.webContents.session
       if (session && cookies) {
-        await Promise.all(
-          cookies.map((c) => {
-            const isHost = c.name.startsWith('__Host-')
-            const isSecurePrefix = c.name.startsWith('__Secure-')
-            const cookieObj: Electron.CookiesSetDetails = {
-              url: `${c.secure || isHost || isSecurePrefix ? 'https' : 'http'}://${(c.domain ?? '').replace(/^\./, '')}${c.path || '/'}`,
-              name: c.name,
-              value: c.value,
-              path: isHost ? '/' : c.path || '/',
-              secure: isHost || isSecurePrefix ? true : c.secure || false,
-              httpOnly: c.httpOnly || false,
-              expirationDate: c.expirationDate
-            }
-            if (!isHost && c.domain) {
-              cookieObj.domain = c.domain
-            }
-            session.cookies
-              .set(cookieObj)
-              .catch((err) => console.error('Set cookie fail', c.name, err))
-          })
-        )
+        await setCookiesForSession(session, cookies)
         console.log('Set cookies successfully')
         v?.webContents.reload()
       } else {
@@ -841,6 +852,7 @@ export function registerWebContentsViewManager(mainWindow: BrowserWindow): WebCo
   ipcMain.handle('bv:destroy', (_e, { id, profileId }) => {
     const v = getView(id)
     if (v) {
+      closeDetachedWindowOnly(id, v)
       removeWebContentsView(v)
       ElectronChromeExtensions.fromSession(v.webContents.session)?.removeTab(v.webContents)
       if (activeView === v) activeView = null
@@ -848,10 +860,7 @@ export function registerWebContentsViewManager(mainWindow: BrowserWindow): WebCo
       viewAccounts.delete(id)
       viewProfiles.delete(id)
       if (profileId && profileViews.has(profileId)) {
-        profileViews.get(profileId)!.delete(id)
-        if (profileViews.get(profileId)!.size === 0) {
-          profileViews.delete(profileId)
-        }
+        removeProfileTab(profileViews, profileId, id)
       }
       try {
         ;(v as unknown as { destroy?: () => void }).destroy?.()
@@ -867,6 +876,7 @@ export function registerWebContentsViewManager(mainWindow: BrowserWindow): WebCo
       for (const tabId of tabIds) {
         const v = views.get(tabId)
         if (v) {
+          closeDetachedWindowOnly(tabId, v)
           removeWebContentsView(v)
           ElectronChromeExtensions.fromSession(v.webContents.session)?.removeTab(v.webContents)
           if (activeView === v) activeView = null
@@ -892,7 +902,8 @@ export function registerWebContentsViewManager(mainWindow: BrowserWindow): WebCo
   })
 
   ipcMain.handle('bv:destroy-all', () => {
-    for (const v of views.values()) {
+    for (const [id, v] of views.entries()) {
+      closeDetachedWindowOnly(id, v)
       ElectronChromeExtensions.fromSession(v.webContents.session)?.removeTab(v.webContents)
       removeWebContentsView(v)
       try {
@@ -908,6 +919,13 @@ export function registerWebContentsViewManager(mainWindow: BrowserWindow): WebCo
     closeExtensionPanel()
     extensionPaths.clear()
     return true
+  })
+  ipcMain.handle('bv:open-window', (_e, { id, profileId, title }) => {
+    return openDetachedWindow(id, profileId, title)
+  })
+  ipcMain.handle('bv:close-window', (_e, { id }) => {
+    const profileId = viewProfiles.get(id)
+    return restoreDetachedTabToApp(id, profileId)
   })
   // Toggle fullscreen for a specific WebContentsView (fill window content area below overlay)
   ipcMain.handle('bv:toggle-fullscreen', (_e, { id }) => {
@@ -946,7 +964,7 @@ export function registerWebContentsViewManager(mainWindow: BrowserWindow): WebCo
         /* noop */
       }
       try {
-        v.setBounds(computeFullscreenBounds())
+        v.setBounds(computeFullscreenBounds(mainWindow))
       } catch {
         /* noop */
       }
@@ -967,25 +985,7 @@ export function registerWebContentsViewManager(mainWindow: BrowserWindow): WebCo
           }
         }
 
-        const clearTasks: Array<Promise<void>> = []
-        for (const s of sessions) {
-          clearTasks.push((s as Electron.Session).clearCache())
-          clearTasks.push(
-            (s as Electron.Session).clearStorageData({
-              storages: [
-                'cookies',
-                'filesystem',
-                'indexdb',
-                'localstorage',
-                'shadercache',
-                'serviceworkers',
-                'cachestorage',
-                'websql'
-              ]
-            })
-          )
-        }
-        await Promise.allSettled(clearTasks)
+        await clearSessionData(sessions as Set<Electron.Session>)
       }
     } catch {
       /* noop */
@@ -1363,7 +1363,7 @@ export function registerWebContentsViewManager(mainWindow: BrowserWindow): WebCo
         const v = getView(id)
         if (v) {
           try {
-            v.setBounds(computeFullscreenBounds())
+            v.setBounds(computeFullscreenBounds(mainWindow))
           } catch {
             /* noop */
           }
@@ -1381,7 +1381,7 @@ export function registerWebContentsViewManager(mainWindow: BrowserWindow): WebCo
           }
         }
         try {
-          activeView.setBounds(computeFullscreenBounds())
+          activeView.setBounds(computeFullscreenBounds(mainWindow))
         } catch {
           /* noop */
         }

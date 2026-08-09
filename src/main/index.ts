@@ -1,32 +1,17 @@
-/* eslint-disable @typescript-eslint/explicit-function-return-type */
-import { app, shell, BrowserWindow, ipcMain, protocol, globalShortcut } from 'electron'
+import { app, shell, BrowserWindow, protocol, globalShortcut } from 'electron'
 import path, { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { ElectronChromeExtensions } from 'electron-chrome-extensions'
 import icon from '../../resources/icon.png?asset'
-import { saveTokens, getAccessToken, getRefreshToken, clearTokens, ensureDeviceID } from './auth'
-import { autoUpdater } from 'electron-updater'
-import os from 'os'
 import * as ChromeLauncher from 'chrome-launcher'
-import { registerWebContentsViewManager } from './webContentsViewManager'
-import { registerAuthLoginView } from './authLoginView'
+import { registerAppIpc } from './ipc/app.ipc'
+import { registerAuthLoginView, registerWebContentsViewManager } from './ipc/browser.ipc'
+import { registerAutoUpdater } from './services/update/autoUpdater'
 
 let mainWindow: BrowserWindow
 let webContentsViewManager: ReturnType<typeof registerWebContentsViewManager> | null = null
 let authLoginViewManager: ReturnType<typeof registerAuthLoginView> | null = null
 let pendingDeepLink: string | null = null
-
-type SupportGuidePayload = {
-  title: string
-  description?: string
-  contentMarkdown?: string
-  guideUrl?: string
-  productTitle?: string
-  productLogoUrl?: string
-}
-
-let supportGuidePayload: SupportGuidePayload | null = null
-let supportGuideWindow: BrowserWindow | null = null
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'chrome-extension', privileges: { secure: true, standard: true } }
@@ -90,51 +75,6 @@ function createWindow(): void {
   }
 }
 
-function loadRendererRoute(window: BrowserWindow, route: string): void {
-  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    window.loadURL(`${process.env['ELECTRON_RENDERER_URL']}#${route}`)
-  } else {
-    window.loadFile(join(__dirname, '../renderer/index.html'), { hash: route.replace(/^\//, '') })
-  }
-}
-
-function openSupportGuideWindow(payload: SupportGuidePayload): boolean {
-  supportGuidePayload = payload
-  if (supportGuideWindow && !supportGuideWindow.isDestroyed()) {
-    supportGuideWindow.focus()
-    supportGuideWindow.webContents.send('support-guide:payload-updated', supportGuidePayload)
-    return true
-  }
-
-  supportGuideWindow = new BrowserWindow({
-    width: 1050,
-    height: 780,
-    minWidth: 560,
-    minHeight: 620,
-    show: false,
-    autoHideMenuBar: true,
-    title: payload.title || 'Hướng dẫn hỗ trợ',
-    parent: mainWindow || undefined,
-    modal: false,
-    ...(process.platform === 'linux' ? { icon } : {}),
-    icon,
-    webPreferences: {
-      devTools: is.dev,
-      preload: join(__dirname, '../preload/index.js'),
-      sandbox: false,
-      webviewTag: false
-    }
-  })
-
-  supportGuideWindow.on('ready-to-show', () => supportGuideWindow?.show())
-  supportGuideWindow.on('closed', () => {
-    supportGuideWindow = null
-    supportGuidePayload = null
-  })
-  loadRendererRoute(supportGuideWindow, '/support-guide')
-  return true
-}
-
 // đảm bảo chỉ chạy 1 instance
 const gotTheLock = app.requestSingleInstanceLock()
 
@@ -164,63 +104,12 @@ if (!gotTheLock) {
     app.on('browser-window-created', (_, window) => {
       optimizer.watchWindowShortcuts(window)
     })
-    ipcMain.on('ping', () => console.log('pong'))
-    ipcMain.handle('open-external', async (_, url) => {
-      await shell.openExternal(url)
-    })
-    ipcMain.handle('support-guide:open', async (_, payload: SupportGuidePayload) => {
-      return openSupportGuideWindow(payload)
-    })
-    ipcMain.handle('support-guide:get-payload', async () => supportGuidePayload)
-    ipcMain.handle('auth:save', async (_, { access, refresh }) => {
-      await saveTokens(access, refresh)
-      return true
-    })
-
-    ipcMain.handle('auth:get', async () => {
-      return {
-        access: await getAccessToken(),
-        refresh: await getRefreshToken()
-      }
-    })
-
-    ipcMain.handle('auth:clear', async () => {
-      try {
-        await clearTokens()
-        authLoginViewManager?.close()
-
-        // Collect sessions (main window + all WebContentsViews) BEFORE destroying views
-        const sessions = new Set(webContentsViewManager?.getSessions() || [])
-        if (mainWindow) sessions.add(mainWindow.webContents.session)
-
-        const clearTasks: Array<Promise<void>> = []
-        for (const s of sessions) {
-          clearTasks.push(s.clearCache())
-          clearTasks.push(
-            s.clearStorageData({
-              storages: [
-                'cookies',
-                'filesystem',
-                'indexdb',
-                'localstorage',
-                'shadercache',
-                'serviceworkers',
-                'cachestorage',
-                'websql'
-              ]
-            })
-          )
-        }
-        await Promise.allSettled(clearTasks)
-        webContentsViewManager?.destroyAll()
-
-        return true
-      } catch {
-        return false
-      }
-    })
-
     createWindow()
+    registerAppIpc({
+      mainWindow,
+      getBrowserManager: () => webContentsViewManager,
+      getAuthLoginViewManager: () => authLoginViewManager
+    })
     try {
       // Global F11 toggles OS-level fullscreen for the main window
       globalShortcut.register('F11', () => {
@@ -234,47 +123,9 @@ if (!gotTheLock) {
     } catch {
       /* noop */
     }
-    // --- Auto update events ---
-    autoUpdater.on('checking-for-update', () => {
-      mainWindow?.webContents.send('update-checking')
-    })
-
-    autoUpdater.on('update-available', (info) => {
-      mainWindow?.webContents.send('update-available', info)
-    })
-
-    autoUpdater.on('update-not-available', (info) => {
-      mainWindow?.webContents.send('update-not-available', info)
-    })
-
-    autoUpdater.on('error', (err) => {
-      mainWindow?.webContents.send('update-error', { message: err.message })
-    })
-
-    autoUpdater.on('download-progress', (progressObj) => {
-      mainWindow?.webContents.send('update-progress', progressObj)
-    })
-
-    autoUpdater.on('update-downloaded', (info) => {
-      mainWindow?.webContents.send('update-downloaded', info)
-      autoUpdater.quitAndInstall()
-    })
-    // --- Trigger check ---
-    autoUpdater.checkForUpdatesAndNotify()
+    registerAutoUpdater(mainWindow)
     webContentsViewManager = registerWebContentsViewManager(mainWindow)
     authLoginViewManager = registerAuthLoginView(mainWindow)
-    ipcMain.handle('os:get-device-uuid', async () => {
-      const device_uuid = await ensureDeviceID()
-      return device_uuid
-    })
-    ipcMain.handle('os:get-app-info', async () => {
-      return {
-        device_name: os.hostname(),
-        os: os.platform(),
-        app_version: app.getVersion()
-      }
-    })
-
     app.on('will-quit', () => {
       try {
         globalShortcut.unregisterAll()

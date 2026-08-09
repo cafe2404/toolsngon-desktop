@@ -4,6 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { api } from '@renderer/lib/axios'
 import type { AppSetting, Category, UserProduct } from 'src/types/global'
 import { toast } from 'sonner'
+import { desktop } from '@renderer/lib/desktop'
 
 const SUPPORT_CHAT_STORAGE_PREFIX = 'toolsngon:support-chat'
 
@@ -68,7 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const saveTokens = useCallback(async (next: { access: string; refresh: string }) => {
     setAccessToken(next.access)
     setRefreshToken(next.refresh)
-    await window.auth.save(next.access, next.refresh)
+    await desktop.auth.tokens.save(next.access, next.refresh)
   }, [])
 
   const clearAuth = useCallback(async () => {
@@ -77,7 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null)
     setUserProducts([])
     setUserProductsError(null)
-    await window.auth.clear()
+    await desktop.auth.tokens.clear()
   }, [])
 
   const fetchMe = useCallback(async () => {
@@ -102,8 +103,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginWithCode = useCallback(
     async ({ session_id, code }: { session_id: string; code: string }) => {
-      const deviceUUID = await window.os.getDeviceUUID()
-      const appInfo = await window.os.getAppInfo()
+      const deviceUUID = await desktop.app.getDeviceUUID()
+      const appInfo = await desktop.app.getInfo()
       const res = await api.post('/api/app_auth/exchange_token/', {
         session_id,
         code,
@@ -119,8 +120,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginWithDesktopToken = useCallback(
     async (token: string) => {
-      const deviceUUID = await window.os.getDeviceUUID()
-      const appInfo = await window.os.getAppInfo()
+      const deviceUUID = await desktop.app.getDeviceUUID()
+      const appInfo = await desktop.app.getInfo()
       const res = await api.post('/api/appdesktop/auth', {
         token,
         device_uuid: deviceUUID,
@@ -137,8 +138,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refresh = useCallback(async () => {
     if (!refreshToken) throw new Error('No refresh token')
-    const deviceUUID = await window.os.getDeviceUUID()
-    const appInfo = await window.os.getAppInfo()
+    const deviceUUID = await desktop.app.getDeviceUUID()
+    const appInfo = await desktop.app.getInfo()
     const res = await api.post('/api/app_auth/refresh/', {
       refresh: refreshToken,
       device_uuid: deviceUUID,
@@ -146,15 +147,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     })
     const data = res.data as { access: string }
     setAccessToken(data.access)
-    await window.auth.save(data.access, refreshToken)
+    await desktop.auth.tokens.save(data.access, refreshToken)
   }, [refreshToken])
 
   const logout = useCallback(async () => {
     try {
       clearSupportChatStorage()
       // Close all tabs first
-      await window.api?.browserView?.destroyAll?.()
-      await window.api?.browserView?.clearAllData?.()
+      await desktop.browser.tabs.destroyAll?.()
+      await desktop.browser.storage.clearAllData?.()
       await clearAuth()
     } catch {
       // noop
@@ -180,7 +181,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     ;(async () => {
       try {
-        const stored = await window.auth.get()
+        const stored = await desktop.auth.tokens.get()
         if (stored.access && stored.access) {
           setRefreshToken(stored.refresh)
           setAccessToken(stored.access)
@@ -203,7 +204,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let ws: WebSocket | null = null
 
     const initWebSocket = async () => {
-      const deviceUUID = await window.os.getDeviceUUID()
+      const deviceUUID = await desktop.app.getDeviceUUID()
       try {
         const wsUrl = `${import.meta.env.VITE_WS_URL}/session/${sessionId}/`
         ws = new WebSocket(wsUrl)
@@ -259,7 +260,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const getSessionId = async () => {
       try {
-        const deviceUUID = await window.os.getDeviceUUID()
+        const deviceUUID = await desktop.app.getDeviceUUID()
         const res = await api.post('/api/app_auth/session/', { device_uuid: deviceUUID })
         const data = res.data as { session_id: string }
         setSessionId(data.session_id)

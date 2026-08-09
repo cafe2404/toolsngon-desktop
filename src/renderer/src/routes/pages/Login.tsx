@@ -7,6 +7,7 @@ import { api } from '@renderer/lib/axios'
 import { useAuth } from '@contexts/AuthContext'
 import { toast } from 'sonner'
 import { useLanguage } from '@renderer/contexts/LanguageContext'
+import { desktop } from '@renderer/lib/desktop'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -32,7 +33,7 @@ export default function Login() {
   }, [])
 
   const closeLoginView = useCallback(() => {
-    window.api.authLoginView.close()
+    desktop.auth.loginView.close()
     setLoading(false)
   }, [])
 
@@ -45,9 +46,9 @@ export default function Login() {
       requestAnimationFrame(() => {
         const bounds = getLoginViewBounds()
         if (bounds) {
-          window.api.authLoginView.open(loginUrl, bounds)
+          desktop.auth.loginView.open(loginUrl, bounds)
         } else {
-          window.api.openExternal(loginUrl)
+          desktop.app.openExternal(loginUrl)
         }
       })
     } catch (err: any) {
@@ -67,10 +68,10 @@ export default function Login() {
   }
 
   useEffect(() => {
-    const unsubscribe = window.api.onDeepLink((url) => {
+    const unsubscribe = desktop.events.onDeepLink((url) => {
       const parsed = new URL(url)
       if (parsed.host === 'auth') {
-        window.api.authLoginView.close()
+        desktop.auth.loginView.close()
         navigate('/auth/callback' + parsed.search)
       }
       setLoading(false)
@@ -90,7 +91,7 @@ export default function Login() {
     const updateBounds = (): void => {
       const bounds = getLoginViewBounds()
       if (bounds) {
-        window.api.authLoginView.setBounds(bounds)
+        desktop.auth.loginView.setBounds(bounds)
       }
     }
 
@@ -111,7 +112,7 @@ export default function Login() {
 
   useEffect(() => {
     return () => {
-      window.api.authLoginView.close()
+      desktop.auth.loginView.close()
     }
   }, [])
 

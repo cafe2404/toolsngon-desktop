@@ -1,8 +1,8 @@
 import puppeteer, { Browser, Page } from 'puppeteer'
-import { Account } from '../types/global'
+import { Account } from '../../../types/global'
 import { join } from 'path'
 import { app } from 'electron'
-import { prepareExtension } from './utils'
+import { prepareExtension } from '../../utils'
 interface LaunchOptions {
   id: string
   url: string

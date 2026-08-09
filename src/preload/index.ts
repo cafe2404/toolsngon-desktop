@@ -1,207 +1,43 @@
-/* eslint-disable @typescript-eslint/explicit-function-return-type */
-import { contextBridge, Cookie, ipcRenderer } from 'electron'
+import { contextBridge } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import { injectBrowserAction } from 'electron-chrome-extensions/browser-action'
-import { Account } from '../types/global'
+import {
+  desktopApi,
+  legacyApi,
+  legacyAuthApi,
+  legacyOsApi,
+  legacyUpdateApi
+} from './bridge/desktop'
 
 injectBrowserAction()
-
-const api = {
-  onDeepLink: (callback: (url: string) => void): (() => void) => {
-    const listener = (_: Electron.IpcRendererEvent, url: string): void => callback(url)
-    ipcRenderer.on('deep-link', listener)
-    return () => ipcRenderer.removeListener('deep-link', listener)
-  },
-  openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
-  supportGuide: {
-    open: (payload: {
-      title: string
-      description?: string
-      contentMarkdown?: string
-      guideUrl?: string
-      productTitle?: string
-      productLogoUrl?: string
-    }) => ipcRenderer.invoke('support-guide:open', payload),
-    getPayload: () => ipcRenderer.invoke('support-guide:get-payload'),
-    onPayloadUpdated: (
-      callback: (
-        payload: {
-          title: string
-          description?: string
-          contentMarkdown?: string
-          guideUrl?: string
-          productTitle?: string
-          productLogoUrl?: string
-        } | null
-      ) => void
-    ): (() => void) => {
-      const listener = (
-        _: Electron.IpcRendererEvent,
-        payload: {
-          title: string
-          description?: string
-          contentMarkdown?: string
-          guideUrl?: string
-          productTitle?: string
-          productLogoUrl?: string
-        } | null
-      ): void => callback(payload)
-      ipcRenderer.on('support-guide:payload-updated', listener)
-      return () => ipcRenderer.removeListener('support-guide:payload-updated', listener)
-    }
-  },
-  authLoginView: {
-    open: (url: string, bounds: { x: number; y: number; width: number; height: number }) =>
-      ipcRenderer.invoke('auth-login-view:open', { url, bounds }),
-    setBounds: (bounds: { x: number; y: number; width: number; height: number }) =>
-      ipcRenderer.invoke('auth-login-view:set-bounds', { bounds }),
-    close: () => ipcRenderer.invoke('auth-login-view:close')
-  },
-  onBrowserViewUpdate: (
-    callback: (payload: { id: string; updates: Record<string, unknown> }) => void
-  ): (() => void) => {
-    const listener = (
-      _e: Electron.IpcRendererEvent,
-      payload: { id: string; updates: Record<string, unknown> }
-    ): void => callback(payload)
-    ipcRenderer.on('bv:update', listener)
-    return () => ipcRenderer.removeListener('bv:update', listener)
-  },
-  browserView: {
-    attach: (
-      id: string,
-      url?: string,
-      account?: Account,
-      bounds?: { x: number; y: number; width: number; height: number },
-      activate: boolean = true,
-      profileId?: string
-    ) => ipcRenderer.invoke('bv:attach', { id, url, account, bounds, activate, profileId }),
-    openChrome: (id: string, url?: string, account?: Account) =>
-      ipcRenderer.invoke('bv:open-chrome', { id, url, account }),
-    toggleExtensionPanel: (
-      profileId: string,
-      extension: NonNullable<Account['extensions']>[number],
-      bounds?: { x: number; y: number; width: number; height: number }
-    ) => ipcRenderer.invoke('bv:toggle-extension-panel', { profileId, extension, bounds }),
-    closeExtensionPanel: (profileId?: string, extensionId?: string) =>
-      ipcRenderer.invoke('bv:close-extension-panel', { profileId, extensionId }),
-    setBounds: (id: string, bounds: { x: number; y: number; width: number; height: number }) =>
-      ipcRenderer.invoke('bv:set-bounds', { id, bounds }),
-    focus: (id: string) => ipcRenderer.invoke('bv:focus', { id }),
-    navigate: (id: string, url: string) => ipcRenderer.invoke('bv:navigate', { id, url }),
-    back: (id: string) => ipcRenderer.invoke('bv:back', { id }),
-    forward: (id: string) => ipcRenderer.invoke('bv:forward', { id }),
-    reload: (id: string) => ipcRenderer.invoke('bv:reload', { id }),
-    stop: (id: string) => ipcRenderer.invoke('bv:stop', { id }),
-    destroyAll: () => ipcRenderer.invoke('bv:destroy-all'),
-    destroyProfile: (profileId: string) => ipcRenderer.invoke('bv:destroy-profile', { profileId }),
-    clearAllData: () => ipcRenderer.invoke('bv:clear-all-data'),
-    clearProfileData: (profileId: string) =>
-      ipcRenderer.invoke('bv:clear-profile-data', { profileId }),
-    destroy: (id: string, profileId?: string) =>
-      ipcRenderer.invoke('bv:destroy', { id, profileId }),
-    injectScript: (id: string, script: string) =>
-      ipcRenderer.invoke('bv:inject-script', { id, script }),
-    toggleFullscreen: (id: string) => ipcRenderer.invoke('bv:toggle-fullscreen', { id }),
-    onNewTab: (
-      callback: (
-        payload:
-          | string
-          | {
-              id?: string
-              url: string
-              title?: string
-              viewReady?: boolean
-              webContentsId?: number
-              forceCreate?: boolean
-            }
-      ) => void
-    ): (() => void) => {
-      const listener = (
-        _: Electron.IpcRendererEvent,
-        payload:
-          | string
-          | {
-              id?: string
-              url: string
-              title?: string
-              viewReady?: boolean
-              webContentsId?: number
-              forceCreate?: boolean
-            }
-      ): void => callback(payload)
-      ipcRenderer.on('new-tab', listener)
-      return () => ipcRenderer.removeListener('new-tab', listener)
-    },
-    getCookies: (id: string) => ipcRenderer.invoke('bv:get-cookies', { id }),
-    captureScreenshot: (id: string) => ipcRenderer.invoke('bv:capture-screenshot', { id }),
-    setCookies: (id: string, cookies: Cookie[]) =>
-      ipcRenderer.invoke('bv:set-cookies', { id, cookies }),
-    getInfo: (id: string) => ipcRenderer.invoke('bv:get-info', { id }),
-    getSessionStorage: (id: string) => ipcRenderer.invoke('bv:get-session-storage', { id }),
-    getLocalStorage: (id: string) => ipcRenderer.invoke('bv:get-local-storage', { id }),
-    getIndexedDB: (id: string) => ipcRenderer.invoke('bv:get-indexed-db', { id }),
-    getWebSQL: (id: string) => ipcRenderer.invoke('bv:get-web-sql', { id }),
-    getCache: (id: string) => ipcRenderer.invoke('bv:get-cache', { id })
-  }
-}
-
-const updateApi = {
-  onUpdateChecking: (callback: () => void) => {
-    ipcRenderer.on('update-checking', callback)
-    return () => ipcRenderer.removeListener('update-checking', callback)
-  },
-  onUpdateAvailable: (callback: (info) => void) => {
-    const listener = (_: Electron.IpcRendererEvent, info) => callback(info)
-    ipcRenderer.on('update-available', listener)
-    return () => ipcRenderer.removeListener('update-available', listener)
-  },
-  onUpdateNotAvailable: (callback: (info) => void) => {
-    const listener = (_: Electron.IpcRendererEvent, info) => callback(info)
-    ipcRenderer.on('update-not-available', listener)
-    return () => ipcRenderer.removeListener('update-not-available', listener)
-  },
-  onUpdateError: (callback: (err: { message: string }) => void) => {
-    const listener = (_: Electron.IpcRendererEvent, err: { message: string }) => callback(err)
-    ipcRenderer.on('update-error', listener)
-    return () => ipcRenderer.removeListener('update-error', listener)
-  },
-  onUpdateProgress: (callback: (data) => void) => {
-    const listener = (_: Electron.IpcRendererEvent, data) => callback(data)
-    ipcRenderer.on('update-progress', listener)
-    return () => ipcRenderer.removeListener('update-progress', listener)
-  },
-  onUpdateDownloaded: (callback: (info) => void) => {
-    const listener = (_: Electron.IpcRendererEvent, info) => callback(info)
-    ipcRenderer.on('update-downloaded', listener)
-    return () => ipcRenderer.removeListener('update-downloaded', listener)
-  }
-}
-
-const authApi = {
-  save: (access: string, refresh: string) => ipcRenderer.invoke('auth:save', { access, refresh }),
-  get: () => ipcRenderer.invoke('auth:get'),
-  clear: () => ipcRenderer.invoke('auth:clear')
-}
-
-const osApi = {
-  getDeviceUUID: () => ipcRenderer.invoke('os:get-device-uuid'),
-  getAppInfo: () => ipcRenderer.invoke('os:get-app-info')
-}
 
 if (process.contextIsolated) {
   try {
     contextBridge.exposeInMainWorld('electron', electronAPI)
-    contextBridge.exposeInMainWorld('api', api)
-    contextBridge.exposeInMainWorld('auth', authApi)
-    contextBridge.exposeInMainWorld('os', osApi)
-    contextBridge.exposeInMainWorld('update', updateApi)
+    contextBridge.exposeInMainWorld('desktop', desktopApi)
+
+    // Backward-compatible aliases while renderer code is migrated.
+    contextBridge.exposeInMainWorld('api', legacyApi)
+    contextBridge.exposeInMainWorld('auth', legacyAuthApi)
+    contextBridge.exposeInMainWorld('os', legacyOsApi)
+    contextBridge.exposeInMainWorld('update', legacyUpdateApi)
   } catch (error) {
     console.error(error)
   }
 } else {
-  // @ts-ignore (define in dts)
-  window.electron = electronAPI
-  // @ts-ignore (define in dts)
-  window.api = api
+  const target = window as typeof window & {
+    electron: typeof electronAPI
+    desktop: typeof desktopApi
+    api: typeof legacyApi
+    auth: typeof legacyAuthApi
+    os: typeof legacyOsApi
+    update: typeof legacyUpdateApi
+  }
+
+  target.electron = electronAPI
+  target.desktop = desktopApi
+  target.api = legacyApi
+  target.auth = legacyAuthApi
+  target.os = legacyOsApi
+  target.update = legacyUpdateApi
 }

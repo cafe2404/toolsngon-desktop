@@ -1,136 +1,137 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
-import { Loader2, Plus, XIcon } from "lucide-react"
-import { useProfiles } from "@renderer/contexts/ProfileContext"
-import { Reorder, motion } from "framer-motion";
-import React, { useMemo, useCallback } from "react";
-import { useLanguage } from "../contexts/LanguageContext";
+import { Loader2, Plus, XIcon } from 'lucide-react'
+import { useProfiles } from '@renderer/contexts/ProfileContext'
+import { Reorder, motion } from 'framer-motion'
+import React, { useMemo, useCallback } from 'react'
+import { useLanguage } from '../contexts/LanguageContext'
 
 const TabBar = () => {
-    const { t } = useLanguage()
-    const {
-        switchTab,
-        currentProfile,
-        currentTab,
-        closeTab,
-        updateProfile,
-        addTab
-    } = useProfiles();
-    // Memoize tabs to prevent unnecessary re-renders
-    const allTabs = useMemo(() => currentProfile?.tabs || [], [currentProfile]);
+  const { t } = useLanguage()
+  const { switchTab, currentProfile, currentTab, closeTab, updateProfile, addTab } = useProfiles()
+  // Memoize tabs to prevent unnecessary re-renders
+  const allTabs = useMemo(() => currentProfile?.tabs || [], [currentProfile])
 
-    const onReorder = useCallback((newOrder: typeof allTabs): void => {
-        if (!currentProfile) return;
-        // Update the current profile with new tab order
-        updateProfile(currentProfile.id, { tabs: newOrder });
-    }, [currentProfile, updateProfile]);
+  const onReorder = useCallback(
+    (newOrder: typeof allTabs): void => {
+      if (!currentProfile) return
+      // Update the current profile with new tab order
+      updateProfile(currentProfile.id, { tabs: newOrder })
+    },
+    [currentProfile, updateProfile]
+  )
 
-    const onWheelHorizontal = useCallback((e: React.WheelEvent<HTMLDivElement>): void => {
-        const el = e.currentTarget;
-        if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-            el.scrollLeft += e.deltaY;
-        }
-    }, []);
+  const onWheelHorizontal = useCallback((e: React.WheelEvent<HTMLDivElement>): void => {
+    const el = e.currentTarget
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+      el.scrollLeft += e.deltaY
+    }
+  }, [])
 
-    const handleMouseDown = useCallback((e: MouseEvent, tabId: string): void => {
-        if (!currentProfile) return;
-        if (e.button === 1) {
-            e.stopPropagation();
-            closeTab(currentProfile.id, tabId);
-        }
-    }, [currentProfile, closeTab]);
+  const handleMouseDown = useCallback(
+    (e: MouseEvent, tabId: string): void => {
+      if (!currentProfile) return
+      if (e.button === 1) {
+        e.stopPropagation()
+        closeTab(currentProfile.id, tabId)
+      }
+    },
+    [currentProfile, closeTab]
+  )
 
-    const handleAddNewTab = useCallback(() => {
-        if (!currentProfile) return;
-        // Add a new empty tab
-        const newTabId = `tab_${Date.now()}`
-        const newTab = {
-            id: newTabId,
-            name: 'new-tab',
-            title: t('tabBar.newTab'),
-            url: 'https://www.google.com',
-            currentUrl: 'https://www.google.com',
-            favicon: 'https://www.google.com/favicon.ico'
-        }
-        addTab(currentProfile.id, newTab)
-    }, [currentProfile, addTab, t]);
-    if (!currentProfile) return <></>;
-    if (!currentProfile.account?.is_create_tab) return <></>;
-    return (
-        <div className='no-scrollbar flex-1 flex items-center gap-1.5 w-full py-1.5 bg-slate-100 navbar pl-2 pr-36'>
-            {allTabs.length > 0 && currentProfile.id !== '1' ?
-                <div className="" onWheel={onWheelHorizontal}>
-                    <Reorder.Group
-                        layout="position"
-                        transition={{
-                            type: "spring",
-                            stiffness: 200,
-                            damping: 30,
+  const handleAddNewTab = useCallback(() => {
+    if (!currentProfile) return
+    // Add a new empty tab
+    const newTabId = `tab_${Date.now()}`
+    const newTab = {
+      id: newTabId,
+      name: 'new-tab',
+      title: t('tabBar.newTab'),
+      url: 'https://www.google.com',
+      currentUrl: 'https://www.google.com',
+      favicon: 'https://www.google.com/favicon.ico'
+    }
+    addTab(currentProfile.id, newTab)
+  }, [currentProfile, addTab, t])
+  if (!currentProfile) return <></>
+  if (!currentProfile.account?.is_create_tab) return <></>
+  return (
+    <div className="no-scrollbar flex-1 flex items-center gap-1.5 w-full py-1.5 bg-slate-100 navbar pl-2 pr-36">
+      {allTabs.length > 0 && currentProfile.id !== '1' ? (
+        <div className="" onWheel={onWheelHorizontal}>
+          <Reorder.Group
+            layout="position"
+            transition={{
+              type: 'spring',
+              stiffness: 200,
+              damping: 30
+            }}
+            axis="x"
+            values={allTabs}
+            onReorder={onReorder}
+            className="flex gap-1.5"
+          >
+            {allTabs.map((tab) => (
+              <Reorder.Item
+                value={tab}
+                key={tab.id}
+                onMouseDown={(e: React.MouseEvent) => handleMouseDown(e.nativeEvent, tab.id)}
+                onPointerDown={() => switchTab(currentProfile.id, tab.id)}
+                layout
+                className={`relative ${
+                  currentTab && currentTab.id === tab.id
+                    ? 'bg-white'
+                    : 'hover:bg-slate-200 duration-150'
+                } rounded-lg p-2 w-full max-w-44 no-drag`}
+              >
+                <motion.div layout whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}>
+                  <div className="h-full relative z-1 flex items-center justify-between w-full rounded-lg gap-2 overflow-hidden">
+                    <div className="flex items-center justify-center lg:justify-start gap-2 flex-1 min-w-0">
+                      {tab.isLoading ? (
+                        <Loader2 className="size-4 min-w-4 animate-spin" />
+                      ) : (
+                        <img
+                          className="size-4 min-w-4 object-cover rounded-sm"
+                          src={tab.favicon}
+                          alt=""
+                        />
+                      )}
+                      <div
+                        className={`truncate text-left text-xs w-full ${allTabs.length > 16 ? 'hidden' : 'lg:block hidden'}`}
+                      >
+                        {tab.title}
+                      </div>
+                    </div>
+                    {allTabs.length > 1 && tab.id !== '1' && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          closeTab(currentProfile.id, tab.id)
                         }}
-                        axis="x"
-                        values={allTabs}
-                        onReorder={onReorder}
-                        className="flex gap-1.5"
-                    >
-                        {allTabs.map((tab) => (
-                            <Reorder.Item
-                                value={tab}
-                                key={tab.id}
-                                onMouseDown={(e: React.MouseEvent) => handleMouseDown(e.nativeEvent, tab.id)}
-                                onPointerDown={() => switchTab(currentProfile.id, tab.id)}
-                                layout
-                                className={`relative ${currentTab && currentTab.id === tab.id
-                                    ? "bg-white"
-                                    : "hover:bg-slate-200 duration-150"
-                                    } rounded-lg p-2 w-full max-w-44 no-drag`}
-                            >
-                                <motion.div
-                                    layout
-                                    whileHover={{ scale: 1.01 }}
-                                    whileTap={{ scale: 0.98 }}
-                                >
-                                    <div className="h-full relative z-1 flex items-center justify-between w-full rounded-lg gap-2 overflow-hidden">
-                                        <div className="flex items-center justify-center lg:justify-start gap-2 flex-1 min-w-0">
-                                            {tab.isLoading ? (
-                                                <Loader2 className="size-4 min-w-4 animate-spin" />
-                                            ) : (
-                                                <img
-                                                    className="size-4 min-w-4 object-cover rounded-sm"
-                                                    src={tab.favicon}
-                                                    alt=""
-                                                />
-                                            )}
-                                            <div className={`truncate text-left text-xs w-full ${allTabs.length > 16 ? 'hidden' : 'lg:block hidden'}`}>
-                                                {tab.title}
-                                            </div>
-                                        </div>
-                                        {allTabs.length > 1 && tab.id !== '1' &&
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    closeTab(currentProfile.id, tab.id);
-                                                }}
-                                                className=" hover:bg-slate-200 lg:flex hidden items-center justify-center min-w-4 size-4 rounded-full duration-300 shrink-0"
-                                            >
-                                                <XIcon size={14} />
-                                            </button>
-                                        }
-                                    </div>
-                                </motion.div>
-                            </Reorder.Item>
-                        ))}
-                        {currentProfile.account?.is_create_tab && currentProfile?.id !== "1" &&
-                            <button onClick={handleAddNewTab} className={`min-w-8 w-8 h-8 flex rounded-lg hover:bg-slate-200 duration-150 items-center justify-center`}>
-                                <Plus size={16}></Plus>
-                            </button>
-                        }
-                    </Reorder.Group>
-                </div>
-                :
-                <div className="flex items-center justify-center h-8 w-full text-sm font-medium">
-                    {currentTab?.title}
-                </div>
-            }
+                        className=" hover:bg-slate-200 lg:flex hidden items-center justify-center min-w-4 size-4 rounded-full duration-300 shrink-0"
+                      >
+                        <XIcon size={14} />
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
+              </Reorder.Item>
+            ))}
+            {currentProfile.account?.is_create_tab && currentProfile?.id !== '1' && (
+              <button
+                onClick={handleAddNewTab}
+                className={`min-w-8 w-8 h-8 flex rounded-lg hover:bg-slate-200 duration-150 items-center justify-center`}
+              >
+                <Plus size={16}></Plus>
+              </button>
+            )}
+          </Reorder.Group>
         </div>
-    )
+      ) : (
+        <div className="flex items-center justify-center h-8 w-full text-sm font-medium">
+          {currentTab?.title}
+        </div>
+      )}
+    </div>
+  )
 }
 export default TabBar

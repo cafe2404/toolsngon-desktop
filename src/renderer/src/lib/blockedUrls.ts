@@ -23,16 +23,14 @@ export const blockedUrlsApi = {
   // Kiểm tra URL có bị block không
   isUrlBlocked: (url: string, blockedKeywords: string[]): boolean => {
     if (!url || !blockedKeywords.length) return false
-    
+
     const urlLower = url.toLowerCase()
-    return blockedKeywords.some(keyword => 
-      urlLower.includes(keyword.toLowerCase())
-    )
+    return blockedKeywords.some((keyword) => urlLower.includes(keyword.toLowerCase()))
   },
 
   // Lấy danh sách keywords từ blocked URLs
   getKeywords: (blockedUrls: BlockedUrl[]): string[] => {
-    return blockedUrls.map(item => item.keyword)
+    return blockedUrls.map((item) => item.keyword)
   }
 }
 

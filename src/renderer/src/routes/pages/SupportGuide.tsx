@@ -5,6 +5,7 @@ import logoSvg from '../../assets/logo_2.svg'
 import { Button } from '../../components/ui/button'
 import api from '../../lib/axios'
 import { useLanguage } from '../../contexts/LanguageContext'
+import { desktop } from '@renderer/lib/desktop'
 
 type SupportGuidePayload = {
   title: string
@@ -35,9 +36,35 @@ const markdownStyles = {
     textAlign: 'left',
     width: '100%'
   },
-  heading1: { alignSelf: 'stretch', color: '#0f172a', fontSize: 26, fontWeight: '700', lineHeight: 34, marginBottom: 16, textAlign: 'left' },
-  heading2: { alignSelf: 'stretch', color: '#0f172a', fontSize: 22, fontWeight: '700', lineHeight: 30, marginBottom: 12, marginTop: 24, textAlign: 'left' },
-  heading3: { alignSelf: 'stretch', color: '#0f172a', fontSize: 18, fontWeight: '700', lineHeight: 26, marginBottom: 10, marginTop: 18, textAlign: 'left' },
+  heading1: {
+    alignSelf: 'stretch',
+    color: '#0f172a',
+    fontSize: 26,
+    fontWeight: '700',
+    lineHeight: 34,
+    marginBottom: 16,
+    textAlign: 'left'
+  },
+  heading2: {
+    alignSelf: 'stretch',
+    color: '#0f172a',
+    fontSize: 22,
+    fontWeight: '700',
+    lineHeight: 30,
+    marginBottom: 12,
+    marginTop: 24,
+    textAlign: 'left'
+  },
+  heading3: {
+    alignSelf: 'stretch',
+    color: '#0f172a',
+    fontSize: 18,
+    fontWeight: '700',
+    lineHeight: 26,
+    marginBottom: 10,
+    marginTop: 18,
+    textAlign: 'left'
+  },
   paragraph: { alignSelf: 'stretch', marginBottom: 14, textAlign: 'left', width: '100%' },
   text: { textAlign: 'left' },
   bullet_list: { alignSelf: 'stretch', marginBottom: 14, width: '100%' },
@@ -93,8 +120,8 @@ function SupportGuide(): React.JSX.Element {
   const [guidesError, setGuidesError] = useState<string | null>(null)
 
   useEffect(() => {
-    window.api.supportGuide.getPayload().then(setPayload)
-    return window.api.supportGuide.onPayloadUpdated(setPayload)
+    desktop.app.supportGuide.getPayload().then(setPayload)
+    return desktop.app.supportGuide.onPayloadUpdated(setPayload)
   }, [])
 
   const loadGuides = async (): Promise<void> => {
@@ -123,35 +150,43 @@ function SupportGuide(): React.JSX.Element {
     })
   }
   const toggleGuideList = (): void => {
-    setShowGuideList(prev => !prev)
+    setShowGuideList((prev) => !prev)
   }
   const content = payload?.contentMarkdown || payload?.description || t('supportGuide.emptyContent')
   const markdownContent = useMemo(() => content, [content])
   const handleLinkPress = (url: string): boolean => {
-    window.api.openExternal(url)
+    desktop.app.openExternal(url)
     return false
   }
   useEffect(() => {
     loadGuides()
   }, [])
   return (
-    <main className='h-full w-screen z-50 bg-white flex flex-col overflow-y-hidden'>
+    <main className="h-full w-screen z-50 bg-white flex flex-col overflow-y-hidden">
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 px-6 py-4 backdrop-blur">
         <div className="flex items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-2">
-              <img src={payload?.productLogoUrl || logoSvg} alt={payload?.productTitle || 'Toolsngon'} className="h-full w-full object-contain" />
+              <img
+                src={payload?.productLogoUrl || logoSvg}
+                alt={payload?.productTitle || 'Toolsngon'}
+                className="h-full w-full object-contain"
+              />
             </div>
             <div className="min-w-0">
-              <h1 className="truncate text-lg font-semibold">{payload?.title || t('supportGuide.fallbackTitle')}</h1>
+              <h1 className="truncate text-lg font-semibold">
+                {payload?.title || t('supportGuide.fallbackTitle')}
+              </h1>
               {(payload?.productTitle || payload?.description) && (
-                <p className="mt-0.5 text-left truncate text-sm text-slate-500">{payload.productTitle || payload.description}</p>
+                <p className="mt-0.5 text-left truncate text-sm text-slate-500">
+                  {payload.productTitle || payload.description}
+                </p>
               )}
             </div>
           </div>
           <div className="flex items-center gap-2">
             {payload?.guideUrl && (
-              <Button type="button" onClick={() => window.api.openExternal(payload.guideUrl!)}>
+              <Button type="button" onClick={() => desktop.app.openExternal(payload.guideUrl!)}>
                 <ExternalLinkIcon size={16} />
                 {t('supportGuide.openOriginalFile')}
               </Button>
@@ -169,18 +204,29 @@ function SupportGuide(): React.JSX.Element {
         {showGuideList && (
           <aside className="w-80 shrink-0 overflow-y-auto border-r border-slate-200 bg-slate-50 z-50 p-4">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-800">{t('supportGuide.allGuides')}</h2>
-              <Button variant={'outline'} type="button" size="icon-sm" onClick={() => setShowGuideList(false)}>
+              <h2 className="text-sm font-semibold text-slate-800">
+                {t('supportGuide.allGuides')}
+              </h2>
+              <Button
+                variant={'outline'}
+                type="button"
+                size="icon-sm"
+                onClick={() => setShowGuideList(false)}
+              >
                 <PanelLeftClose></PanelLeftClose>
               </Button>
             </div>
             {guidesLoading && <div className="text-sm text-slate-500">{t('common.loading')}</div>}
-            {guidesError && <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{guidesError}</div>}
+            {guidesError && (
+              <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+                {guidesError}
+              </div>
+            )}
             {!guidesLoading && !guidesError && guides.length === 0 && (
               <div className="text-sm text-slate-500">{t('supportGuide.emptyGuides')}</div>
             )}
             <div className="space-y-2">
-              {guides.map(guide => (
+              {guides.map((guide) => (
                 <button
                   key={guide.id}
                   type="button"
@@ -189,14 +235,26 @@ function SupportGuide(): React.JSX.Element {
                 >
                   <div className="flex items-start gap-2">
                     <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-slate-50">
-                      <img src={guide.product_logo_url || logoSvg} alt={guide.product_title || 'Toolsngon'} className="h-full w-full object-contain p-1" />
+                      <img
+                        src={guide.product_logo_url || logoSvg}
+                        alt={guide.product_title || 'Toolsngon'}
+                        className="h-full w-full object-contain p-1"
+                      />
                     </div>
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-slate-800">{guide.title}</div>
-                      <div className="mt-0.5 truncate text-xs text-slate-500">{guide.product_title || t('supportGuide.generalGuide')}</div>
+                      <div className="truncate text-sm font-semibold text-slate-800">
+                        {guide.title}
+                      </div>
+                      <div className="mt-0.5 truncate text-xs text-slate-500">
+                        {guide.product_title || t('supportGuide.generalGuide')}
+                      </div>
                     </div>
                   </div>
-                  {guide.description && <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">{guide.description}</p>}
+                  {guide.description && (
+                    <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">
+                      {guide.description}
+                    </p>
+                  )}
                 </button>
               ))}
             </div>

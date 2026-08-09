@@ -1,10 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Space+Grotesk:wght@300..700&display=swap');
-@import "tailwindcss";
-@import "tw-animate-css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
 
 .navbar {
   -webkit-app-region: drag;
-  cursor: move; 
+  cursor: move;
 }
 
 .navbar .no-drag,
@@ -14,7 +14,7 @@
 }
 
 body {
-  font-family: "Poppins", sans-serif;
+  font-family: 'Poppins', sans-serif;
 }
 
 @keyframes panel-slide-in {
@@ -48,17 +48,25 @@ body {
 }
 
 .support-chat-button::before {
-  content: "";
+  content: '';
   position: absolute;
   inset: -80%;
   z-index: -2;
-  background: conic-gradient(from 0deg, transparent 0deg, #60a5fa 70deg, #2563eb 115deg, #a855f7 155deg, transparent 230deg, transparent 360deg);
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    #60a5fa 70deg,
+    #2563eb 115deg,
+    #a855f7 155deg,
+    transparent 230deg,
+    transparent 360deg
+  );
   animation: support-border-spin 4.2s linear infinite;
   -webkit-animation: support-border-spin 4.2s linear infinite;
 }
 
 .support-chat-button::after {
-  content: "";
+  content: '';
   position: absolute;
   inset: 1px;
   z-index: -1;
@@ -95,7 +103,6 @@ body {
   background-color: #64748b;
   /* hover effect */
 }
-
 
 :root {
   --background: oklch(1 0 0);

@@ -7,9 +7,9 @@ import {
     ArrowRight,
     BellIcon,
     BookOpen,
-    ExternalLinkIcon,
     LayoutDashboard,
     LoaderCircle,
+    LogOutIcon,
     PanelLeftClose,
     PanelLeftOpen,
     Store
@@ -29,6 +29,7 @@ import {
 import { Notify } from '@/src/types/global'
 import api from '../lib/axios'
 import { cn } from '../lib/utils'
+import { desktop } from '@renderer/lib/desktop'
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL?.replace(/\/$/, '') || 'https://toolsngon.com'
 const STORE_URL = `${SERVER_URL}/store/`
@@ -72,8 +73,11 @@ export default function Sidebar({
 }: SidebarProps): React.ReactElement {
     const { profiles, currentProfile, currentTab, setCurrentProfile, switchTab, addTab } =
         useProfiles()
-    const { loadUserProducts, user, appSetting } = useAuth()
+    const { loadUserProducts, user, appSetting, logout } = useAuth()
     const { language, setLanguage, t } = useLanguage()
+    const accountManagerLabel = t('sidebar.accountManager')
+    const storeLabel = t('sidebar.accountStore')
+    const docsLabel = t('sidebar.userGuide')
     const [loadingNotify, setLoadingNotify] = useState(false)
     const [openNotifications, setOpenNotifications] = useState(false)
     const [notifications, setNotifications] = useState<Notify[] | null>()
@@ -101,7 +105,7 @@ export default function Sidebar({
             addTab('1', {
                 id: storeTabId,
                 name: 'store',
-                title: 'Cửa hàng tài khoản',
+                title: storeLabel,
                 url: STORE_URL,
                 currentUrl: STORE_URL,
                 favicon: 'https://toolsngon.com/static/images/icon.png'
@@ -121,7 +125,7 @@ export default function Sidebar({
             addTab('1', {
                 id: docsTabId,
                 name: 'docs',
-                title: 'Hướng dẫn sử dụng',
+                title: docsLabel,
                 url: DOCS_URL,
                 currentUrl: DOCS_URL,
                 favicon: 'https://toolsngon-com.gitbook.io/~gitbook/icon?size=small&theme=light'
@@ -144,7 +148,7 @@ export default function Sidebar({
     }
 
     const getAppInfo = async (): Promise<void> => {
-        const appInfo = await window.os.getAppInfo()
+        const appInfo = await desktop.app.getInfo()
         setAppInfo(appInfo)
     }
 
@@ -202,7 +206,7 @@ export default function Sidebar({
                     variant={'ghost'}
                     size={'icon-xs'}
                     onClick={onToggleCollapsed}
-                    title={collapsed ? 'Expand' : 'Collapse'}
+                    title={collapsed ? t('sidebar.expand') : t('sidebar.collapse')}
                 >
                     {collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
                 </Button>
@@ -215,7 +219,7 @@ export default function Sidebar({
                         collapsed && 'opacity-0 whitespace-nowrap'
                     )}
                 >
-                    Điều hướng
+                    {t('sidebar.navigation')}
                 </p>
                 <div className="space-y-1.5 w-full">
                     <Button
@@ -228,10 +232,10 @@ export default function Sidebar({
                                 ? 'bg-blue-50 text-blue-600 font-semibold hover:bg-blue-50! hover:text-blue-600!'
                                 : 'text-slate-600 hover:text-slate-600 font-normal'
                         )}
-                        title="Dashboard"
+                        title={accountManagerLabel}
                     >
                         <LayoutDashboard />
-                        {!collapsed && 'Quản lý tài khoản'}
+                        {!collapsed && accountManagerLabel}
                     </Button>
                     <Button
                         variant={'ghost'}
@@ -243,10 +247,10 @@ export default function Sidebar({
                                 ? 'bg-blue-50 text-blue-600 font-semibold hover:bg-blue-50! hover:text-blue-600!'
                                 : 'text-slate-600 hover:text-slate-600! font-normal'
                         )}
-                        title="Cửa hàng tài khoản"
+                        title={storeLabel}
                     >
                         <Store />
-                        {!collapsed && 'Cửa hàng tài khoản'}
+                        {!collapsed && storeLabel}
                     </Button>
                     <Button
                         variant={'ghost'}
@@ -258,10 +262,10 @@ export default function Sidebar({
                                 ? 'bg-blue-50 text-blue-600 font-semibold hover:bg-blue-50! hover:text-blue-600!'
                                 : 'text-slate-600 hover:text-slate-600! font-normal'
                         )}
-                        title="Hướng dẫn sử dụng"
+                        title={docsLabel}
                     >
                         <BookOpen />
-                        {!collapsed && 'Hướng dẫn sử dụng'}
+                        {!collapsed && docsLabel}
                     </Button>
 
                     {appSetting?.menus?.map((item) => (
@@ -275,11 +279,8 @@ export default function Sidebar({
                             )}
                         >
                             <a href={item.url} target="_blank" rel="noreferrer" title={item.label}>
-                                <div className="flex items-center gap-2 w-full">
-                                    <MenuIcon icon={item.icon} />
-                                    {!collapsed && <span>{item.label}</span>}
-                                </div>
-                                <ExternalLinkIcon className='size-3.5' />
+                                <MenuIcon icon={item.icon} />
+                                {!collapsed && <span>{item.label}</span>}
                             </a>
                         </Button>
                     ))}
@@ -296,7 +297,7 @@ export default function Sidebar({
                                     collapsed && 'opacity-0 whitespace-nowrap'
                                 )}
                             >
-                                Ứng dụng đang mở
+                                {t('sidebar.openApps')}
                             </p>
                         )}
                         <OpenApps collapsed={collapsed} />
@@ -356,79 +357,89 @@ export default function Sidebar({
                             <p className="text-sm font-medium text-slate-600 truncate ">{user?.email}</p>
                         )}
                     </div>
-                    <DropdownMenu
-                        open={openNotifications}
-                        onOpenChange={(open) => setOpenNotifications(open)}
-                    >
-                        <DropdownMenuTrigger
-                            asChild
-                            disabled={loadingNotify}
-                            onClick={() => setOpenNotifications(!openNotifications)}
+                    {notifications && notifications?.length > 0 &&
+                        <DropdownMenu
+                            open={openNotifications}
+                            onOpenChange={(open) => setOpenNotifications(open)}
                         >
-                            <div
-                                className={cn(
-                                    loadingNotify && 'pointer-events-none cursor-not-allowed',
-                                    'size-7 hover:bg-slate-200 relative duration-300 text-slate-600 hover:text-slate-800 rounded-md flex items-center justify-center',
-                                    !!collapsed && 'hidden'
-                                )}
+                            <DropdownMenuTrigger
+                                asChild
+                                disabled={loadingNotify}
+                                onClick={() => setOpenNotifications(!openNotifications)}
                             >
-                                {loadingNotify ? (
-                                    <LoaderCircle className="animate-spin text-slate-800" size={16} />
-                                ) : (
-                                    <BellIcon size={16} />
-                                )}
-                                {notifications && (
-                                    <div className="absolute -top-2 right-2 text-xs rounded-full size-4 flex items-center justify-center bg-red-500 text-white">
-                                        {notifications.length}
-                                    </div>
-                                )}
-                            </div>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                            align="end"
-                            side="top"
-                            className="w-80 overflow-y-auto max-h-[70vh] rounded-xl p-0"
-                        >
-                            <DropdownMenuGroup className="divide-y">
-                                {notifications ? (
-                                    notifications.map((noti) => (
-                                        <DropdownMenuItem key={noti.id} className="rounded-none p-1 group">
-                                            <a
-                                                href={noti.url}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                className="flex flex-col gap-2 items-start p-2 hover:bg-slate-200 duration-150 rounded-lg"
-                                            >
-                                                <div className=" text-slate-800 font-medium text-left line-clamp-2">
-                                                    {noti.title}
-                                                    <span className="absolute top-4 right-4 p-2 rounded-md shadow bg-white opacity-0 group-hover:opacity-100 duration-150">
-                                                        <ArrowRight
-                                                            size={14}
-                                                            className="text-slate-800 group-hover:-rotate-45 duration-300"
-                                                        />
-                                                    </span>
-                                                </div>
-                                                <span className="text-slate-600 text-xs line-clamp-3">
-                                                    {noti.description}
-                                                </span>
-                                                {noti.image && (
-                                                    <div className="w-full aspect-video overflow-hidden rounded-md">
-                                                        <img className="w-full h-full object-cover" src={noti.image} alt="" />
+                                <div
+                                    className={cn(
+                                        loadingNotify && 'pointer-events-none cursor-not-allowed',
+                                        'size-7 hover:bg-slate-200 relative duration-300 text-slate-600 hover:text-slate-800 rounded-md flex items-center justify-center',
+                                        !!collapsed && 'hidden'
+                                    )}
+                                >
+                                    {loadingNotify ? (
+                                        <LoaderCircle className="animate-spin text-slate-800" size={16} />
+                                    ) : (
+                                        <BellIcon size={16} />
+                                    )}
+                                    {notifications && (
+                                        <div className="absolute -top-2 right-2 text-xs rounded-full size-4 flex items-center justify-center bg-red-500 text-white">
+                                            {notifications.length}
+                                        </div>
+                                    )}
+                                </div>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                                align="end"
+                                side="top"
+                                className="w-80 overflow-y-auto max-h-[70vh] rounded-xl p-0"
+                            >
+                                <DropdownMenuGroup className="divide-y">
+                                    {notifications ? (
+                                        notifications.map((noti) => (
+                                            <DropdownMenuItem key={noti.id} className="rounded-none p-1 group">
+                                                <a
+                                                    href={noti.url}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="flex flex-col gap-2 items-start p-2 hover:bg-slate-200 duration-150 rounded-lg"
+                                                >
+                                                    <div className=" text-slate-800 font-medium text-left line-clamp-2">
+                                                        {noti.title}
+                                                        <span className="absolute top-4 right-4 p-2 rounded-md shadow bg-white opacity-0 group-hover:opacity-100 duration-150">
+                                                            <ArrowRight
+                                                                size={14}
+                                                                className="text-slate-800 group-hover:-rotate-45 duration-300"
+                                                            />
+                                                        </span>
                                                     </div>
-                                                )}
-                                            </a>
+                                                    <span className="text-slate-600 text-xs line-clamp-3">
+                                                        {noti.description}
+                                                    </span>
+                                                    {noti.image && (
+                                                        <div className="w-full aspect-video overflow-hidden rounded-md">
+                                                            <img className="w-full h-full object-cover" src={noti.image} alt="" />
+                                                        </div>
+                                                    )}
+                                                </a>
+                                            </DropdownMenuItem>
+                                        ))
+                                    ) : (
+                                        <DropdownMenuItem className="p-4 flex items-center justify-center">
+                                            {t('tabControl.noNotifications')}
                                         </DropdownMenuItem>
-                                    ))
-                                ) : (
-                                    <DropdownMenuItem className="p-4 flex items-center justify-center">
-                                        {t('tabControl.noNotifications')}
-                                    </DropdownMenuItem>
-                                )}
-                            </DropdownMenuGroup>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                                    )}
+                                </DropdownMenuGroup>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    }
+                    <Button
+                        variant={'ghost'}
+                        onClick={logout}
+                        size={'icon-sm'}
+                        title={(t('tabControl.logout'))}
+                    >
+                        <LogOutIcon />
+                    </Button>
                 </div>
             </div>
-        </div>
+        </div >
     )
 }

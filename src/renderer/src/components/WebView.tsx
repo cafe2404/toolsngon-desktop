@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { Tab, useProfiles } from '../contexts/ProfileContext'
 import { getDesktopWebLoginUrl } from '../lib/desktopWebLogin'
+import { desktop } from '@renderer/lib/desktop'
 
 export default function WebView({
   tab,
@@ -12,7 +13,12 @@ export default function WebView({
   isActive?: boolean
 }): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
+  const isDetachedRef = useRef(tab.isDetached === true)
   const { currentTab, updateTab, currentProfile } = useProfiles()
+
+  useEffect(() => {
+    isDetachedRef.current = tab.isDetached === true
+  }, [tab.isDetached])
 
   useLayoutEffect((): (() => void) => {
     const id = tab.id
@@ -33,7 +39,7 @@ export default function WebView({
     if (!tab.viewReady) {
       getDesktopWebLoginUrl(initialUrl).then((targetUrl) => {
         if (cancelled) return
-        window.api?.browserView?.attach(
+        desktop.browser.tabs.attach(
           id,
           targetUrl || initialUrl,
           currentProfile?.account,
@@ -45,8 +51,8 @@ export default function WebView({
       })
     }
     const onResize = (): void => {
-      // @ts-ignore: exposed by preload (api.browserView.setBounds)
-      window.api?.browserView?.setBounds(id, calcBounds())
+      if (isDetachedRef.current) return
+      desktop.browser.tabs.setBounds(id, calcBounds())
     }
     window.addEventListener('resize', onResize)
 
@@ -60,15 +66,13 @@ export default function WebView({
       if (payload.id !== id) return
       updateTab(profileID, id, payload.updates as Partial<Tab>)
     }
-    // @ts-ignore: exposed by preload (api.onBrowserViewUpdate)
-    const unsubscribe = window.api?.onBrowserViewUpdate(updateHandler)
+    const unsubscribe = desktop.browser.tabs.onUpdated(updateHandler)
 
     return (): void => {
       cancelled = true
       window.removeEventListener('resize', onResize)
       if (ro) ro.disconnect()
-      // @ts-ignore: exposed by preload (api.browserView.destroy)
-      window.api?.browserView?.destroy(id, profileID)
+      desktop.browser.tabs.destroy(id, profileID)
       updateTab(profileID, id, { viewReady: false })
       if (typeof unsubscribe === 'function') unsubscribe()
     }
@@ -78,6 +82,7 @@ export default function WebView({
   // When this tab becomes current, bring its BrowserView to front and refresh bounds
   useEffect((): void => {
     if (!isActive || currentTab?.id !== tab.id) return
+    if (tab.isDetached) return
     const id = tab.id
     const calcBounds = (): { x: number; y: number; width: number; height: number } => {
       const el = containerRef.current
@@ -90,14 +95,14 @@ export default function WebView({
         height: Math.floor(rect.height)
       }
     }
-    window.api?.browserView?.focus(id)
-    window.api?.browserView?.setBounds(id, calcBounds())
-  }, [isActive, currentTab?.id, tab.id, profileID])
+    desktop.browser.tabs.focus(id)
+    desktop.browser.tabs.setBounds(id, calcBounds())
+  }, [isActive, currentTab?.id, tab.id, profileID, tab.isDetached])
   return (
     <div
       ref={containerRef}
       className="w-full h-full"
-      style={{ display: tab.id === currentTab?.id ? 'block' : 'none' }}
+      style={{ display: tab.id === currentTab?.id && !tab.isDetached ? 'block' : 'none' }}
     />
   )
 }

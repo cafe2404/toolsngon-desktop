@@ -1,13 +1,14 @@
 import { useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useProfiles } from '../../contexts/ProfileContext'
+import { desktop } from '@renderer/lib/desktop'
 
 const DeepLinkListener = (): null => {
   const { userProducts, loadUserProducts } = useAuth()
   const { addTab, addProfile, setCurrentProfile, switchTab, profiles, injectScript } = useProfiles()
 
   useEffect(() => {
-    const unsubscribe = window.api.onDeepLink(async (url) => {
+    const unsubscribe = desktop.events.onDeepLink(async (url) => {
       const parsed = new URL(url)
       console.log(parsed.href)
       if (parsed.host === 'dashboard') {
@@ -80,7 +81,7 @@ const DeepLinkListener = (): null => {
             })
           }
           if (account?.open_chrome) {
-            await window.api.browserView.openChrome(tabId, item.product.url, account)
+            await desktop.browser.tabs.openChrome(tabId, item.product.url, account)
             return
           }
           if (account?.script) {

@@ -18,6 +18,7 @@ import { useLanguage } from '../contexts/LanguageContext'
 import { Button } from './ui/button'
 import { cn } from '../lib/utils'
 import { getDesktopWebLoginUrl } from '../lib/desktopWebLogin'
+import { desktop } from '@renderer/lib/desktop'
 
 const TabControl = () => {
   const { currentProfile, currentTab, goBack, addTab, goForward, reload, stop, injectScript } =
@@ -34,7 +35,7 @@ const TabControl = () => {
 
   const handleOpenHome = useCallback(() => {
     if (!currentTab?.url) return
-    window.api?.browserView?.navigate(currentTab.id, currentTab?.url)
+    desktop.browser.tabs.navigate(currentTab.id, currentTab?.url)
   }, [currentTab])
 
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -59,7 +60,7 @@ const TabControl = () => {
 
       // Gọi API để điều hướng trong BrowserView
       const nextUrl = await getDesktopWebLoginUrl(targetUrl)
-      await window.api.browserView?.navigate(currentTab.id, nextUrl || targetUrl)
+      await desktop.browser.tabs.navigate(currentTab.id, nextUrl || targetUrl)
     }
   }
   const handleReloadTab = async () => {
@@ -78,7 +79,7 @@ const TabControl = () => {
   const handleSetCookies = useCallback(async () => {
     if (!currentProfile?.account?.cookies) return
     if (!currentTab) return
-    await window.api.browserView?.setCookies(currentTab.id, currentProfile.account.cookies)
+    await desktop.browser.tabs.setCookies(currentTab.id, currentProfile.account.cookies)
   }, [currentProfile, currentTab])
 
   const handleAddNewTab = useCallback(

@@ -45,7 +45,11 @@ const interpolate = (message: string, params?: TranslationParams): string => {
   )
 }
 
-export const LanguageProvider = ({ children }: { children: React.ReactNode }): React.JSX.Element => {
+export const LanguageProvider = ({
+  children
+}: {
+  children: React.ReactNode
+}): React.JSX.Element => {
   const [language, setLanguageState] = useState<Language>(getInitialLanguage)
 
   const setLanguage = (nextLanguage: Language): void => {
