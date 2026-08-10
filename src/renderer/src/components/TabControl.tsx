@@ -184,7 +184,7 @@ const TabControl = () => {
               {currentTab?.favicon && (
                 <img src={currentTab.favicon} alt="" className="size-5 rounded-sm" />
               )}
-              {currentTab?.title}
+              <p className='truncate pr-4'>{currentTab?.title}</p>
             </div>
             {currentProfile.id !== '1' && extensionTab && (
               <browser-action-list

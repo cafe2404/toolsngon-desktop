@@ -48,7 +48,7 @@ function AppLayout(): React.JSX.Element {
           />
         </div>
       </div>
-      <div className="h-full flex flex-col flex-1">
+      <div className="h-full min-w-0 flex flex-1 flex-col overflow-hidden">
         <TabBar />
         <TabControl />
         <div className="flex h-full overflow-hidden">

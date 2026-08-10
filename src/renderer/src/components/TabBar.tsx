@@ -10,6 +10,7 @@ const TabBar = () => {
   const { switchTab, currentProfile, currentTab, closeTab, updateProfile, addTab } = useProfiles()
   // Memoize tabs to prevent unnecessary re-renders
   const allTabs = useMemo(() => currentProfile?.tabs || [], [currentProfile])
+  const isIconOnly = allTabs.length > 9
 
   const onReorder = useCallback(
     (newOrder: typeof allTabs): void => {
@@ -19,13 +20,6 @@ const TabBar = () => {
     },
     [currentProfile, updateProfile]
   )
-
-  const onWheelHorizontal = useCallback((e: React.WheelEvent<HTMLDivElement>): void => {
-    const el = e.currentTarget
-    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-      el.scrollLeft += e.deltaY
-    }
-  }, [])
 
   const handleMouseDown = useCallback(
     (e: MouseEvent, tabId: string): void => {
@@ -55,77 +49,92 @@ const TabBar = () => {
   if (!currentProfile) return <></>
   if (!currentProfile.account?.is_create_tab) return <></>
   return (
-    <div className="no-scrollbar flex-1 flex items-center gap-1.5 w-full py-1.5 bg-slate-100 navbar pl-2 pr-36">
+    <div className="box-border flex h-11 w-full min-w-0 items-center gap-1.5 overflow-hidden bg-slate-100 py-1.5 pl-2 pr-36 navbar">
       {allTabs.length > 0 && currentProfile.id !== '1' ? (
-        <div className="" onWheel={onWheelHorizontal}>
-          <Reorder.Group
-            layout="position"
-            transition={{
-              type: 'spring',
-              stiffness: 200,
-              damping: 30
-            }}
-            axis="x"
-            values={allTabs}
-            onReorder={onReorder}
-            className="flex gap-1.5"
-          >
-            {allTabs.map((tab) => (
-              <Reorder.Item
-                value={tab}
-                key={tab.id}
-                onMouseDown={(e: React.MouseEvent) => handleMouseDown(e.nativeEvent, tab.id)}
-                onPointerDown={() => switchTab(currentProfile.id, tab.id)}
-                layout
-                className={`relative ${
-                  currentTab && currentTab.id === tab.id
-                    ? 'bg-white'
-                    : 'hover:bg-slate-200 duration-150'
-                } rounded-lg p-2 w-full max-w-44 no-drag`}
-              >
-                <motion.div layout whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}>
-                  <div className="h-full relative z-1 flex items-center justify-between w-full rounded-lg gap-2 overflow-hidden">
-                    <div className="flex items-center justify-center lg:justify-start gap-2 flex-1 min-w-0">
-                      {tab.isLoading ? (
-                        <Loader2 className="size-4 min-w-4 animate-spin" />
-                      ) : (
-                        <img
-                          className="size-4 min-w-4 object-cover rounded-sm"
-                          src={tab.favicon}
-                          alt=""
-                        />
-                      )}
-                      <div
-                        className={`truncate text-left text-xs w-full ${allTabs.length > 16 ? 'hidden' : 'lg:block hidden'}`}
-                      >
-                        {tab.title}
+        <>
+          <div className="min-w-0 flex-1 overflow-hidden no-drag">
+            <Reorder.Group
+              layout="position"
+              transition={{
+                type: 'spring',
+                stiffness: 200,
+                damping: 30
+              }}
+              axis="x"
+              values={allTabs}
+              onReorder={onReorder}
+              className="flex w-full max-w-full min-w-0 items-center gap-1.5 overflow-hidden"
+            >
+              {allTabs.map((tab) => {
+                const isActive = currentTab && currentTab.id === tab.id
+
+                return (
+                  <Reorder.Item
+                    value={tab}
+                    key={tab.id}
+                    onMouseDown={(e: React.MouseEvent) => handleMouseDown(e.nativeEvent, tab.id)}
+                    onPointerDown={() => switchTab(currentProfile.id, tab.id)}
+                    layout
+                    className={`relative ${
+                      isActive ? 'bg-white' : 'hover:bg-slate-200 duration-150'
+                    } group h-8 min-w-0 max-w-44 flex-[0_1_11rem] rounded-lg px-2 no-drag`}
+                  >
+                    <motion.div
+                      layout
+                      className="h-full"
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <div className="h-full relative z-1 flex items-center justify-between w-full rounded-lg gap-1.5 overflow-hidden">
+                        <div
+                          className={`flex items-center gap-2 flex-1 min-w-0 ${
+                            isIconOnly ? 'justify-center' : 'justify-center lg:justify-start'
+                          }`}
+                        >
+                          {tab.isLoading ? (
+                            <Loader2 className="size-4 shrink-0 animate-spin" />
+                          ) : (
+                            <img
+                              className="size-4 shrink-0 object-cover rounded-sm"
+                              src={tab.favicon}
+                              alt=""
+                            />
+                          )}
+                          <div
+                            className={`truncate text-left text-xs w-full ${
+                              isIconOnly ? 'hidden' : 'hidden lg:block'
+                            }`}
+                          >
+                            {tab.title}
+                          </div>
+                        </div>
+                        {allTabs.length > 1 && tab.id !== '1' && !isIconOnly && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              closeTab(currentProfile.id, tab.id)
+                            }}
+                            className="hidden size-4 min-w-4 shrink-0 items-center justify-center rounded-full duration-300 hover:bg-slate-200 group-hover:flex lg:flex"
+                          >
+                            <XIcon size={14} />
+                          </button>
+                        )}
                       </div>
-                    </div>
-                    {allTabs.length > 1 && tab.id !== '1' && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          closeTab(currentProfile.id, tab.id)
-                        }}
-                        className=" hover:bg-slate-200 lg:flex hidden items-center justify-center min-w-4 size-4 rounded-full duration-300 shrink-0"
-                      >
-                        <XIcon size={14} />
-                      </button>
-                    )}
-                  </div>
-                </motion.div>
-              </Reorder.Item>
-            ))}
-            {currentProfile.account?.is_create_tab && currentProfile?.id !== '1' && (
-              <button
-                onClick={handleAddNewTab}
-                className={`min-w-8 w-8 h-8 flex rounded-lg hover:bg-slate-200 duration-150 items-center justify-center`}
-              >
-                <Plus size={16}></Plus>
-              </button>
-            )}
-          </Reorder.Group>
-        </div>
+                    </motion.div>
+                  </Reorder.Item>
+                )
+              })}
+              {currentProfile.account?.is_create_tab && currentProfile?.id !== '1' && (
+                <button
+                  onClick={handleAddNewTab}
+                  className="flex h-8 w-8 min-w-8 shrink-0 items-center justify-center rounded-lg duration-150 hover:bg-slate-200"
+                >
+                  <Plus size={16}></Plus>
+                </button>
+              )}
+            </Reorder.Group>
+          </div>
+        </>
       ) : (
         <div className="flex items-center justify-center h-8 w-full text-sm font-medium">
           {currentTab?.title}
