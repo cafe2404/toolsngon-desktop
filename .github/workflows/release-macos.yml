@@ -27,6 +27,8 @@ jobs:
     env:
       # The current electron-builder config produces an unsigned, non-notarized app.
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      # Allow macOS assets to be added to the existing cross-platform release.
+      EP_GH_IGNORE_TIME: 'true'
       GH_TOKEN: ${{ secrets.RELEASE_GH_TOKEN }}
 
     steps:
