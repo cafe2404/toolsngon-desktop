@@ -14,9 +14,9 @@ const vi = {
     browserSubtitle: 'và hoàn tất đăng nhập',
     retryPrompt: 'Không thấy tab trình duyệt?',
     retry: 'Thử lại',
-    titleLine1: 'Đăng nhập hoặc tạo',
-    titleLine2: 'tài khoản để',
-    titleLine3: 'bắt đầu',
+    titleLine1: 'Đăng nhập để bắt đầu',
+    titleLine2: '',
+    titleLine3: '',
     continueWithBrowser: 'Tiếp tục với trình duyệt',
     signupPrompt: 'Chưa có tài khoản?',
     signupNow: 'Đăng ký ngay'

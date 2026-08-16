@@ -5,12 +5,11 @@ import { ElectronChromeExtensions, setSessionPartitionResolver } from 'electron-
 import icon from '../../resources/icon.png?asset'
 import * as ChromeLauncher from 'chrome-launcher'
 import { registerAppIpc } from './ipc/app.ipc'
-import { registerAuthLoginView, registerWebContentsViewManager } from './ipc/browser.ipc'
+import { registerWebContentsViewManager } from './ipc/browser.ipc'
 import { registerAutoUpdater } from './services/update/autoUpdater'
 
 let mainWindow: BrowserWindow
 let webContentsViewManager: ReturnType<typeof registerWebContentsViewManager> | null = null
-let authLoginViewManager: ReturnType<typeof registerAuthLoginView> | null = null
 let pendingDeepLink: string | null = null
 
 protocol.registerSchemesAsPrivileged([
@@ -53,7 +52,6 @@ function createWindow(): void {
     mainWindow.show()
     // Xử lý pending deep-link nếu có
     if (pendingDeepLink) {
-      authLoginViewManager?.close()
       mainWindow.webContents.send('deep-link', pendingDeepLink)
       pendingDeepLink = null
     }
@@ -108,8 +106,7 @@ if (!gotTheLock) {
     createWindow()
     registerAppIpc({
       mainWindow,
-      getBrowserManager: () => webContentsViewManager,
-      getAuthLoginViewManager: () => authLoginViewManager
+      getBrowserManager: () => webContentsViewManager
     })
     try {
       // Global F11 toggles OS-level fullscreen for the main window
@@ -126,7 +123,6 @@ if (!gotTheLock) {
     }
     registerAutoUpdater(mainWindow)
     webContentsViewManager = registerWebContentsViewManager(mainWindow)
-    authLoginViewManager = registerAuthLoginView(mainWindow)
     app.on('will-quit', () => {
       try {
         globalShortcut.unregisterAll()
@@ -150,7 +146,6 @@ app.on('window-all-closed', async () => {
 app.on('open-url', (event, url) => {
   event.preventDefault()
   if (mainWindow && mainWindow.webContents) {
-    authLoginViewManager?.close()
     mainWindow.webContents.send('deep-link', url)
   } else {
     pendingDeepLink = url

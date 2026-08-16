@@ -32,7 +32,6 @@ type AuthContextType = {
   isLoading: boolean
   isAuthenticated: boolean
   loginWithCode: (params: { session_id: string; code: string }) => Promise<void>
-  loginWithDesktopToken: (token: string) => Promise<void>
   logout: () => Promise<void>
   refresh: () => Promise<void>
   userProducts: UserProduct[]
@@ -103,8 +102,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginWithCode = useCallback(
     async ({ session_id, code }: { session_id: string; code: string }) => {
-      const deviceUUID = await desktop.app.getDeviceUUID()
-      const appInfo = await desktop.app.getInfo()
+      const [deviceUUID, appInfo] = await Promise.all([
+        desktop.app.getDeviceUUID(),
+        desktop.app.getInfo()
+      ])
       const res = await api.post('/api/app_auth/exchange_token/', {
         session_id,
         code,
@@ -118,28 +119,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [saveTokens]
   )
 
-  const loginWithDesktopToken = useCallback(
-    async (token: string) => {
-      const deviceUUID = await desktop.app.getDeviceUUID()
-      const appInfo = await desktop.app.getInfo()
-      const res = await api.post('/api/appdesktop/auth', {
-        token,
-        device_uuid: deviceUUID,
-        app_info: appInfo
-      })
-      const data = res.data as { access: string; refresh: string; session_id?: string }
-      await saveTokens({ access: data.access, refresh: data.refresh })
-      if (data.session_id) {
-        setSessionId(data.session_id)
-      }
-    },
-    [saveTokens]
-  )
-
   const refresh = useCallback(async () => {
     if (!refreshToken) throw new Error('No refresh token')
-    const deviceUUID = await desktop.app.getDeviceUUID()
-    const appInfo = await desktop.app.getInfo()
+    const [deviceUUID, appInfo] = await Promise.all([
+      desktop.app.getDeviceUUID(),
+      desktop.app.getInfo()
+    ])
     const res = await api.post('/api/app_auth/refresh/', {
       refresh: refreshToken,
       device_uuid: deviceUUID,
@@ -289,7 +274,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isLoading,
       isAuthenticated,
       loginWithCode,
-      loginWithDesktopToken,
       logout,
       refresh,
       userProducts,
@@ -309,7 +293,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isLoading,
       isAuthenticated,
       loginWithCode,
-      loginWithDesktopToken,
       logout,
       refresh,
       userProducts,

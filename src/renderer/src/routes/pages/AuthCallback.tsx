@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { useAuth } from '@contexts/AuthContext'
 import { LoaderCircle } from 'lucide-react'
@@ -12,43 +11,39 @@ export default function AuthCallback() {
   const [searchParams] = useSearchParams()
   const code = searchParams.get('code')
   const sessionId = searchParams.get('session_id')
-  const token = searchParams.get('token')
   const navigate = useNavigate()
-  const { loginWithCode, loginWithDesktopToken } = useAuth()
+  const { loginWithCode } = useAuth()
   const { t } = useLanguage()
 
-  const checkAuth = async (): Promise<void> => {
-    try {
-      if (token) {
-        await loginWithDesktopToken(token)
-      } else {
-        await loginWithCode({
-          session_id: sessionId!,
-          code: code!
-        })
-      }
-      navigate('/dashboard')
-    } catch (err: any) {
-      const errorMsg =
-        err?.response?.data?.detail || err?.response?.data?.message || t('common.unknownError')
-      console.log('err', errorMsg)
-      const toastId = toast.error(errorMsg, {
-        duration: Infinity,
-        action: {
-          label: t('common.close'),
-          onClick: () => toast.dismiss(toastId)
-        }
-      })
-      navigate('/login')
-    }
-  }
-
   useEffect(() => {
-    console.log(code, sessionId, token)
-    if (token || (code && sessionId)) {
-      void checkAuth()
+    if (!code || !sessionId) return
+
+    let active = true
+    const exchangeCode = async (): Promise<void> => {
+      try {
+        await loginWithCode({ session_id: sessionId, code })
+        if (active) navigate('/dashboard')
+      } catch (err: any) {
+        if (!active) return
+        const errorMsg =
+          err?.response?.data?.detail || err?.response?.data?.message || t('common.unknownError')
+        console.log('err', errorMsg)
+        const toastId = toast.error(errorMsg, {
+          duration: Infinity,
+          action: {
+            label: t('common.close'),
+            onClick: () => toast.dismiss(toastId)
+          }
+        })
+        navigate('/login')
+      }
     }
-  }, [code, sessionId, token])
+
+    void exchangeCode()
+    return () => {
+      active = false
+    }
+  }, [code, loginWithCode, navigate, sessionId, t])
 
   return (
     <>

@@ -23,14 +23,9 @@ type SupportGuidePayload = {
   productLogoUrl?: string
 }
 
-type CloseableManager = {
-  close(): void
-}
-
 type RegisterAppIpcOptions = {
   mainWindow: BrowserWindow
   getBrowserManager(): WebContentsViewManager | null
-  getAuthLoginViewManager(): CloseableManager | null
 }
 
 function loadRendererRoute(window: BrowserWindow, route: string): void {
@@ -45,8 +40,7 @@ function loadRendererRoute(window: BrowserWindow, route: string): void {
 
 export function registerAppIpc({
   mainWindow,
-  getBrowserManager,
-  getAuthLoginViewManager
+  getBrowserManager
 }: RegisterAppIpcOptions): void {
   let supportGuidePayload: SupportGuidePayload | null = null
   let supportGuideWindow: BrowserWindow | null = null
@@ -115,7 +109,6 @@ export function registerAppIpc({
   ipcMain.handle('auth:clear', async () => {
     try {
       await clearTokens()
-      getAuthLoginViewManager()?.close()
 
       const sessions = new Set(getBrowserManager()?.getSessions() || [])
       if (mainWindow) sessions.add(mainWindow.webContents.session)

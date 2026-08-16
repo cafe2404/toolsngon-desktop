@@ -86,6 +86,7 @@ export default function Sidebar({
         os: '',
         app_version: ''
     })
+    const isMacOS = appInfo.os === 'darwin'
 
     const handleSwitchToDashboard = async () => {
         if (currentProfile?.id !== '1') {
@@ -175,6 +176,7 @@ export default function Sidebar({
         <div
             className={cn(
                 'space-y-6 flex flex-col h-full navbar duration-300',
+                isMacOS && 'pt-7',
                 collapsed && 'items-center'
             )}
         >

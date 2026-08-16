@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, LoaderCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '@renderer/lib/axios'
 import { useAuth } from '@contexts/AuthContext'
 import { toast } from 'sonner'
@@ -11,8 +11,8 @@ import { desktop } from '@renderer/lib/desktop'
 
 export default function Login() {
   const navigate = useNavigate()
-  const loginViewRef = useRef<HTMLDivElement>(null)
   const [loading, setLoading] = useState(false)
+  const [loginUrl, setLoginUrl] = useState<string | null>(null)
   const { isAuthenticated } = useAuth()
   const { t } = useLanguage()
 
@@ -20,37 +20,14 @@ export default function Login() {
     if (isAuthenticated) navigate('/dashboard')
   }, [isAuthenticated, navigate])
 
-  const getLoginViewBounds = useCallback(() => {
-    const rect = loginViewRef.current?.getBoundingClientRect()
-    if (!rect) return null
-
-    return {
-      x: Math.floor(rect.left),
-      y: Math.floor(rect.top),
-      width: Math.floor(rect.width),
-      height: Math.floor(rect.height)
-    }
-  }, [])
-
-  const closeLoginView = useCallback(() => {
-    desktop.auth.loginView.close()
-    setLoading(false)
-  }, [])
-
   const createSession = async () => {
     try {
       setLoading(true)
       const res = await api.post('/api/app_auth/create_session/')
       const session_id = res.data.session_id
-      const loginUrl = `${import.meta.env.VITE_SERVER_URL}/app_auth/${session_id}/grant/?desktop_callback=web`
-      requestAnimationFrame(() => {
-        const bounds = getLoginViewBounds()
-        if (bounds) {
-          desktop.auth.loginView.open(loginUrl, bounds)
-        } else {
-          desktop.app.openExternal(loginUrl)
-        }
-      })
+      const nextLoginUrl = `${import.meta.env.VITE_SERVER_URL}/app_auth/${session_id}/grant/`
+      setLoginUrl(nextLoginUrl)
+      await desktop.app.openExternal(nextLoginUrl)
     } catch (err: any) {
       const errorMsg =
         err?.response?.data?.detail || err?.response?.data?.message || t('common.unknownError')
@@ -71,7 +48,6 @@ export default function Login() {
     const unsubscribe = desktop.events.onDeepLink((url) => {
       const parsed = new URL(url)
       if (parsed.host === 'auth') {
-        desktop.auth.loginView.close()
         navigate('/auth/callback' + parsed.search)
       }
       setLoading(false)
@@ -85,67 +61,33 @@ export default function Login() {
     }
   }, [navigate])
 
-  useEffect(() => {
-    if (!loading) return
-
-    const updateBounds = (): void => {
-      const bounds = getLoginViewBounds()
-      if (bounds) {
-        desktop.auth.loginView.setBounds(bounds)
-      }
-    }
-
-    updateBounds()
-    window.addEventListener('resize', updateBounds)
-
-    let ro: ResizeObserver | null = null
-    if (typeof ResizeObserver !== 'undefined' && loginViewRef.current) {
-      ro = new ResizeObserver(() => updateBounds())
-      ro.observe(loginViewRef.current)
-    }
-
-    return () => {
-      window.removeEventListener('resize', updateBounds)
-      ro?.disconnect()
-    }
-  }, [getLoginViewBounds, loading])
-
-  useEffect(() => {
-    return () => {
-      desktop.auth.loginView.close()
-    }
-  }, [])
-
   return (
     <>
       {loading ? (
         <>
-          <div className="flex flex-col gap-3 items-center w-[min(960px,calc(100vw-64px))] h-[min(680px,calc(100vh-120px))]">
-            <div className="flex items-center justify-between w-full">
-              <div className="text-left">
-                <h1 className="text-slate-800 text-xl font-medium">{t('login.browserTitle')}</h1>
-                <p className="text-slate-600 text-sm">{t('login.browserSubtitle')}</p>
-              </div>
+          <div className="flex max-w-sm flex-col items-center gap-4 text-center">
+            <LoaderCircle className="animate-spin text-blue-700" size={28} />
+            <div>
+              <h1 className="text-xl font-medium text-slate-800">{t('login.browserTitle')}</h1>
+              <p className="mt-1 text-sm text-slate-600">{t('login.browserSubtitle')}</p>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-slate-600">
+              <span>{t('login.retryPrompt')}</span>
               <button
-                onClick={closeLoginView}
-                className="px-3 py-2 hover:bg-slate-100 text-slate-600 rounded-lg text-sm"
+                type="button"
+                onClick={() => loginUrl && desktop.app.openExternal(loginUrl)}
+                disabled={!loginUrl}
+                className="font-medium text-blue-700 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {t('login.retry')}
               </button>
             </div>
-            <div
-              ref={loginViewRef}
-              className="w-full flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white"
-            />
           </div>
         </>
       ) : (
         <>
-          <h1 className="text-slate-800 text-2xl font-medium">
-            {t('login.titleLine1')} <br />
-            {t('login.titleLine2')}
-            <br />
-            {t('login.titleLine3')}
+          <h1 className="text-slate-800 text-3xl font-bold">
+            {t('login.titleLine1')}
           </h1>
           <button
             onClick={createSession}

@@ -8,12 +8,7 @@ export const IPC_CHANNELS = {
   auth: {
     save: 'auth:save',
     get: 'auth:get',
-    clear: 'auth:clear',
-    loginView: {
-      open: 'auth-login-view:open',
-      setBounds: 'auth-login-view:set-bounds',
-      close: 'auth-login-view:close'
-    }
+    clear: 'auth:clear'
   },
   browser: {
     tabs: {

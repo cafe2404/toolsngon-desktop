@@ -176,13 +176,6 @@ export const desktopApi = {
           refresh: string | null
         }>,
       clear: () => ipcRenderer.invoke(channels.auth.clear) as Promise<boolean>
-    },
-    loginView: {
-      open: (url: string, bounds: Bounds) =>
-        ipcRenderer.invoke(channels.auth.loginView.open, { url, bounds }) as Promise<boolean>,
-      setBounds: (bounds: Bounds) =>
-        ipcRenderer.invoke(channels.auth.loginView.setBounds, { bounds }) as Promise<boolean>,
-      close: () => ipcRenderer.invoke(channels.auth.loginView.close) as Promise<boolean>
     }
   },
   browser: {
@@ -216,7 +209,6 @@ export const legacyApi = {
   onDeepLink: desktopApi.events.onDeepLink,
   openExternal: desktopApi.app.openExternal,
   supportGuide: desktopApi.app.supportGuide,
-  authLoginView: desktopApi.auth.loginView,
   onBrowserViewUpdate: desktopApi.browser.tabs.onUpdated,
   browserView: {
     ...desktopApi.browser.tabs,

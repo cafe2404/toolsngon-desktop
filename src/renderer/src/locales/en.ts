@@ -14,9 +14,7 @@ const en = {
     browserSubtitle: 'and complete sign in',
     retryPrompt: "Browser tab didn't open?",
     retry: 'Try again',
-    titleLine1: 'Sign in or create',
-    titleLine2: 'an account to',
-    titleLine3: 'get started',
+    titleLine1: 'Sign in an account to get started',
     continueWithBrowser: 'Continue with browser',
     signupPrompt: "Don't have an account?",
     signupNow: 'Sign up now'
