@@ -1,0 +1,82 @@
+name: Build and release macOS
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the build to cafe2404/toolsngon-releases
+        type: boolean
+        default: false
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-macos:
+    name: Build universal macOS app
+    runs-on: macos-14
+    timeout-minutes: 45
+
+    env:
+      # The current electron-builder config produces an unsigned, non-notarized app.
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      GH_TOKEN: ${{ secrets.RELEASE_GH_TOKEN }}
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Verify tag matches package version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          package_version="$(node -p "require('./package.json').version")"
+          tag_version="${GITHUB_REF_NAME#v}"
+          if [[ "$package_version" != "$tag_version" ]]; then
+            echo "Tag v$tag_version does not match package.json version $package_version."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check and build application
+        run: npm run build
+
+      - name: Package universal macOS release
+        shell: bash
+        run: |
+          publish_mode="never"
+          if [[ "$GITHUB_EVENT_NAME" == "push" || "${{ inputs.publish }}" == "true" ]]; then
+            if [[ -z "$GH_TOKEN" ]]; then
+              echo "RELEASE_GH_TOKEN is required to publish to cafe2404/toolsngon-releases."
+              exit 1
+            fi
+            publish_mode="always"
+          fi
+          npx electron-builder --mac --universal --publish "$publish_mode"
+
+      - name: Upload macOS installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: toolsngon-macos-universal-${{ github.run_number }}
+          path: |
+            dist/*.dmg
+            dist/*.zip
+            dist/*.yml
+            dist/*.blockmap
+          if-no-files-found: error
+          retention-days: 30
