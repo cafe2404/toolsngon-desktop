@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: Publish the build to cafe2404/toolsngon-releases
+        description: Publish the build to cafe2404/toolsngon-releases-mac
         type: boolean
         default: false
   push:
@@ -62,12 +62,18 @@ jobs:
           publish_mode="never"
           if [[ "$GITHUB_EVENT_NAME" == "push" || "${{ inputs.publish }}" == "true" ]]; then
             if [[ -z "$GH_TOKEN" ]]; then
-              echo "RELEASE_GH_TOKEN is required to publish to cafe2404/toolsngon-releases."
+              echo "RELEASE_GH_TOKEN is required to publish to cafe2404/toolsngon-releases-mac."
               exit 1
             fi
             publish_mode="always"
           fi
-          npx electron-builder --mac --universal --publish "$publish_mode"
+          npx electron-builder \
+            --mac \
+            --universal \
+            --publish "$publish_mode" \
+            --config.publish.provider=github \
+            --config.publish.owner=cafe2404 \
+            --config.publish.repo=toolsngon-releases-mac
 
       - name: Upload macOS installers
         uses: actions/upload-artifact@v4
