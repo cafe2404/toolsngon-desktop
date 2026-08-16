@@ -6,7 +6,7 @@ on:
       publish:
         description: Publish the macOS build to cafe2404/toolsngon-releases
         type: boolean
-        default: false
+        default: true
   push:
     tags:
       - 'v*'
