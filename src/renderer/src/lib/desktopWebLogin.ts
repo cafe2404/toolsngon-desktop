@@ -1,6 +1,6 @@
 import api from './axios'
+import { SERVER_URL } from './server'
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL?.replace(/\/$/, '') || 'https://toolsngon.com'
 const SERVER_ORIGIN = new URL(SERVER_URL).origin
 
 const isServerUrl = (url?: string): boolean => {

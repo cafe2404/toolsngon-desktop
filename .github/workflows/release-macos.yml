@@ -30,6 +30,8 @@ jobs:
       # Allow macOS assets to be added to the existing cross-platform release.
       EP_GH_IGNORE_TIME: 'true'
       GH_TOKEN: ${{ secrets.RELEASE_GH_TOKEN }}
+      VITE_SERVER_URL: 'https://toolsngon.com'
+      VITE_WS_URL: 'wss://toolsngon.com/ws'
 
     steps:
       - name: Check out source

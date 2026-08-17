@@ -20,6 +20,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import { Carousel, CarouselContent, CarouselItem } from './ui/carousel'
 import { useLanguage } from '../contexts/LanguageContext'
 import { desktop } from '@renderer/lib/desktop'
+import { WS_URL } from '@renderer/lib/server'
 
 type ChatActionType =
   | 'open-guide-video'
@@ -241,10 +242,7 @@ const getSupportTargetKey = (target: SupportTarget): string =>
   `${target.productSlug}:${target.appName}`
 
 const getSupportWebSocketUrl = (conversationId: number, token: string): string => {
-  const wsBaseUrl =
-    import.meta.env.VITE_WS_URL ||
-    `${import.meta.env.VITE_SERVER_URL.replace(/^http/, 'ws').replace(/\/$/, '')}/ws`
-  return `${wsBaseUrl.replace(/\/$/, '')}/support/conversations/${conversationId}/?token=${encodeURIComponent(token)}`
+  return `${WS_URL}/support/conversations/${conversationId}/?token=${encodeURIComponent(token)}`
 }
 
 const dataUrlToFile = (dataUrl: string, fileName: string): File => {

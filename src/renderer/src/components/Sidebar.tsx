@@ -30,8 +30,8 @@ import { Notify } from '@/src/types/global'
 import api from '../lib/axios'
 import { cn } from '../lib/utils'
 import { desktop } from '@renderer/lib/desktop'
+import { SERVER_URL } from '@renderer/lib/server'
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL?.replace(/\/$/, '') || 'https://toolsngon.com'
 const STORE_URL = `${SERVER_URL}/store/`
 const DOCS_URL = 'https://toolsngon-com.gitbook.io/docs/huong-dan-su-dung'
 

@@ -5,6 +5,7 @@ import { api } from '@renderer/lib/axios'
 import type { AppSetting, Category, UserProduct } from 'src/types/global'
 import { toast } from 'sonner'
 import { desktop } from '@renderer/lib/desktop'
+import { WS_URL } from '@renderer/lib/server'
 
 const SUPPORT_CHAT_STORAGE_PREFIX = 'toolsngon:support-chat'
 
@@ -191,7 +192,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const initWebSocket = async () => {
       const deviceUUID = await desktop.app.getDeviceUUID()
       try {
-        const wsUrl = `${import.meta.env.VITE_WS_URL}/session/${sessionId}/`
+        const wsUrl = `${WS_URL}/session/${sessionId}/`
         ws = new WebSocket(wsUrl)
 
         ws.onopen = () => console.log('[WS] Connected to', wsUrl)

@@ -1,5 +1,8 @@
 import axios from 'axios'
 
+const VITE_ENV = (import.meta as unknown as { env?: { VITE_SERVER_URL?: string } }).env
+const SERVER_URL = (VITE_ENV?.VITE_SERVER_URL?.trim() || 'https://toolsngon.com').replace(/\/+$/, '')
+
 export type BlockedUrl = {
   id: number
   keyword: string
@@ -11,9 +14,7 @@ class BlockedUrlsManager {
   public blockedKeywords: string[] = []
   private lastFetch: number = 0
   private readonly FETCH_INTERVAL = 5 * 60 * 1000 // 5 minutes
-  private readonly BASE_URL: string =
-    (import.meta as unknown as { env: { VITE_SERVER_URL: string } }).env.VITE_SERVER_URL ||
-    'http://127.0.0.1:8000'
+  private readonly BASE_URL = SERVER_URL
 
   async fetchBlockedUrls(): Promise<string[]> {
     try {

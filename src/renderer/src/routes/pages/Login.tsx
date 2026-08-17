@@ -8,6 +8,7 @@ import { useAuth } from '@contexts/AuthContext'
 import { toast } from 'sonner'
 import { useLanguage } from '@renderer/contexts/LanguageContext'
 import { desktop } from '@renderer/lib/desktop'
+import { SERVER_URL } from '@renderer/lib/server'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -25,7 +26,7 @@ export default function Login() {
       setLoading(true)
       const res = await api.post('/api/app_auth/create_session/')
       const session_id = res.data.session_id
-      const nextLoginUrl = `${import.meta.env.VITE_SERVER_URL}/app_auth/${session_id}/grant/`
+      const nextLoginUrl = `${SERVER_URL}/app_auth/${session_id}/grant/`
       setLoginUrl(nextLoginUrl)
       await desktop.app.openExternal(nextLoginUrl)
     } catch (err: any) {
@@ -104,7 +105,7 @@ export default function Login() {
               <a
                 target="_blank"
                 rel="noreferrer"
-                href={`${import.meta.env.VITE_SERVER_URL}/signup`}
+                href={`${SERVER_URL}/signup`}
                 className="hover:underline text-blue-600"
               >
                 {t('login.signupNow')}
