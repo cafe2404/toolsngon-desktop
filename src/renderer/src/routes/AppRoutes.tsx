@@ -14,6 +14,7 @@ import TabListener from './pages/TabListener'
 import Updater from './pages/Updater'
 import { UpdaterProvider } from '../contexts/UpdaterContext'
 import SupportGuide from './pages/SupportGuide'
+import Studio from './pages/Studio'
 import { LanguageProvider } from '../contexts/LanguageContext'
 
 function PrivateRoute({ children }: { children: React.JSX.Element }): React.JSX.Element | null {
@@ -38,7 +39,6 @@ function AppRoutes(): React.JSX.Element {
                 <DeepLinkListener />
                 <TabListener />
                 <Routes>
-                  {/* Updater*/}
                   <Route element={<ScreenLayout />}>
                     <Route path="/updater" element={<Updater />} />
                   </Route>
@@ -51,7 +51,6 @@ function AppRoutes(): React.JSX.Element {
                   >
                     <Route path="/support-guide" element={<SupportGuide />} />
                   </Route>
-                  {/* Private routes */}
                   <Route
                     element={
                       <PrivateRoute>
@@ -61,7 +60,15 @@ function AppRoutes(): React.JSX.Element {
                   >
                     <Route path="/" element={<TabContent />} />
                   </Route>
-                  {/* Public routes */}
+                  <Route
+                    element={
+                      <PrivateRoute>
+                        <Studio />
+                      </PrivateRoute>
+                    }
+                  >
+                    <Route path="/studio" element={<Studio />} />
+                  </Route>
                   <Route
                     element={
                       <PublicRoute>
