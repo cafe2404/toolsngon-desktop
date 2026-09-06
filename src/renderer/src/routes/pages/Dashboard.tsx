@@ -42,7 +42,7 @@ const CategoryIcon = ({
 }
 
 export default function Dashboard(): JSX.Element {
-  const { userProducts, userProductsLoading, userProductsError, appSetting, categories } = useAuth()
+  const { userProducts, userProductsLoading, userProductsError, categories } = useAuth()
   const { t } = useLanguage()
   const [query, setQuery] = useState<string>('')
   const [copyUUID, setCopyUUID] = useState<'copy' | 'copied' | 'error'>('copy')
@@ -203,11 +203,6 @@ export default function Dashboard(): JSX.Element {
       className={`w-full flex flex-col gap-6 h-full relative overflow-y-auto bg-white`}
       style={{ display: currentTab?.id === '1' ? 'flex' : 'none' }}
     >
-      {appSetting && appSetting?.top_banner && (
-        <div className="">
-          <div dangerouslySetInnerHTML={{ __html: appSetting?.top_banner }}></div>
-        </div>
-      )}
       <div className="px-4 flex-1 bg-white">
         <div className="flex flex-col gap-2 py-4 sticky top-0 z-50 bg-white">
           <div className="flex items-center gap-2 w-full">

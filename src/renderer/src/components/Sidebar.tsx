@@ -33,7 +33,6 @@ import { desktop } from '@renderer/lib/desktop'
 import { SERVER_URL } from '@renderer/lib/server'
 
 const STORE_URL = `${SERVER_URL}/store/`
-const DOCS_URL = 'https://toolsngon-com.gitbook.io/docs/huong-dan-su-dung'
 
 const toLucideIconName = (icon?: string | null): IconName | null => {
     if (!icon || icon.trim().startsWith('<')) return null
@@ -77,7 +76,6 @@ export default function Sidebar({
     const { language, setLanguage, t } = useLanguage()
     const accountManagerLabel = t('sidebar.accountManager')
     const storeLabel = t('sidebar.accountStore')
-    const docsLabel = t('sidebar.userGuide')
     const [loadingNotify, setLoadingNotify] = useState(false)
     const [openNotifications, setOpenNotifications] = useState(false)
     const [notifications, setNotifications] = useState<Notify[] | null>()
@@ -116,25 +114,7 @@ export default function Sidebar({
         switchTab('1', storeTabId)
     }
 
-    const handleSwitchToDocs = () => {
-        const docsTabId = 'docs'
-        const defaultProfile = profiles.find((profile) => profile.id === '1')
-        const hasDocsTab = defaultProfile?.tabs.some((tab) => tab.id === docsTabId)
 
-        setCurrentProfile('1')
-        if (!hasDocsTab) {
-            addTab('1', {
-                id: docsTabId,
-                name: 'docs',
-                title: docsLabel,
-                url: DOCS_URL,
-                currentUrl: DOCS_URL,
-                favicon: 'https://toolsngon-com.gitbook.io/~gitbook/icon?size=small&theme=light'
-            })
-            return
-        }
-        switchTab('1', docsTabId)
-    }
 
     const getNotifications = async () => {
         setLoadingNotify(true)
@@ -254,22 +234,6 @@ export default function Sidebar({
                         <Store />
                         {!collapsed && storeLabel}
                     </Button>
-                    <Button
-                        variant={'ghost'}
-                        onClick={handleSwitchToDocs}
-                        className={cn(
-                            'w-full rounded-lg hover:bg-blue-50! whitespace-nowrap',
-                            collapsed ? 'justify-center px-0' : 'justify-start',
-                            currentProfile?.id === '1' && currentTab?.id === 'docs'
-                                ? 'bg-blue-50 text-blue-600 font-semibold hover:bg-blue-50! hover:text-blue-600!'
-                                : 'text-slate-600 hover:text-slate-600! font-normal'
-                        )}
-                        title={docsLabel}
-                    >
-                        <BookOpen />
-                        {!collapsed && docsLabel}
-                    </Button>
-
                     {appSetting?.menus?.map((item) => (
                         <Button
                             asChild
@@ -308,6 +272,13 @@ export default function Sidebar({
             </div>
 
             <div className={cn('py-2 space-y-3 w-full', collapsed ? 'px-2' : 'px-4')}>
+                {appSetting?.top_banner && (
+                    <div
+                        dangerouslySetInnerHTML={{
+                            __html: appSetting.top_banner,
+                        }}
+                    />
+                )}
                 <Tabs value={language} onValueChange={(value) => setLanguage(value === 'en' ? 'en' : 'vi')}>
                     <TabsList className={cn('gap-2 w-full', collapsed && 'flex-col h-auto p-1')}>
                         <TabsTrigger
@@ -359,79 +330,79 @@ export default function Sidebar({
                             <p className="text-sm font-medium text-slate-600 truncate ">{user?.email}</p>
                         )}
                     </div>
-                    {notifications && notifications?.length > 0 &&
-                        <DropdownMenu
-                            open={openNotifications}
-                            onOpenChange={(open) => setOpenNotifications(open)}
+                    <DropdownMenu
+                        open={openNotifications}
+                        onOpenChange={(open) => setOpenNotifications(open)}
+                    >
+                        <DropdownMenuTrigger
+                            asChild
+                            disabled={loadingNotify}
+                            onClick={() => setOpenNotifications(!openNotifications)}
                         >
-                            <DropdownMenuTrigger
-                                asChild
-                                disabled={loadingNotify}
-                                onClick={() => setOpenNotifications(!openNotifications)}
+                            <Button
+                                variant={'ghost'}
+                                size={'icon'}
+                                className={cn(
+                                    loadingNotify && 'pointer-events-none cursor-not-allowed',
+                                    'size-7 hover:bg-slate-200 relative duration-300 text-slate-600 hover:text-slate-800 rounded-md flex items-center justify-center',
+                                    !!collapsed && 'hidden'
+                                )}
                             >
-                                <div
-                                    className={cn(
-                                        loadingNotify && 'pointer-events-none cursor-not-allowed',
-                                        'size-7 hover:bg-slate-200 relative duration-300 text-slate-600 hover:text-slate-800 rounded-md flex items-center justify-center',
-                                        !!collapsed && 'hidden'
-                                    )}
-                                >
-                                    {loadingNotify ? (
-                                        <LoaderCircle className="animate-spin text-slate-800" size={16} />
-                                    ) : (
-                                        <BellIcon size={16} />
-                                    )}
-                                    {notifications && (
-                                        <div className="absolute -top-2 right-2 text-xs rounded-full size-4 flex items-center justify-center bg-red-500 text-white">
-                                            {notifications.length}
-                                        </div>
-                                    )}
-                                </div>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                                align="end"
-                                side="top"
-                                className="w-80 overflow-y-auto max-h-[70vh] rounded-xl p-0"
-                            >
-                                <DropdownMenuGroup className="divide-y">
-                                    {notifications ? (
-                                        notifications.map((noti) => (
-                                            <DropdownMenuItem key={noti.id} className="rounded-none p-1 group">
-                                                <a
-                                                    href={noti.url}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    className="flex flex-col gap-2 items-start p-2 hover:bg-slate-200 duration-150 rounded-lg"
-                                                >
-                                                    <div className=" text-slate-800 font-medium text-left line-clamp-2">
-                                                        {noti.title}
-                                                        <span className="absolute top-4 right-4 p-2 rounded-md shadow bg-white opacity-0 group-hover:opacity-100 duration-150">
-                                                            <ArrowRight
-                                                                size={14}
-                                                                className="text-slate-800 group-hover:-rotate-45 duration-300"
-                                                            />
-                                                        </span>
-                                                    </div>
-                                                    <span className="text-slate-600 text-xs line-clamp-3">
-                                                        {noti.description}
+                                {loadingNotify ? (
+                                    <LoaderCircle className="animate-spin text-slate-800" size={16} />
+                                ) : (
+                                    <BellIcon size={16} />
+                                )}
+                                {notifications && notifications?.length > 0 && (
+                                    <div className="absolute -top-2 right-2 text-xs rounded-full size-4 flex items-center justify-center bg-red-500 text-white">
+                                        {notifications.length}
+                                    </div>
+                                )}
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                            align="end"
+                            side="right"
+                            className="w-80 overflow-y-auto max-h-[70vh] rounded-xl p-0"
+                        >
+                            <DropdownMenuGroup className="divide-y">
+                                {notifications?.length ? (
+                                    notifications.map((noti) => (
+                                        <DropdownMenuItem key={noti.id} className="rounded-none p-1 group">
+                                            <a
+                                                href={noti.url}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="flex flex-col gap-2 items-start p-2 hover:bg-slate-200 duration-150 rounded-lg"
+                                            >
+                                                <div className=" text-slate-800 font-medium text-left line-clamp-2">
+                                                    {noti.title}
+                                                    <span className="absolute top-4 right-4 p-2 rounded-md shadow bg-white opacity-0 group-hover:opacity-100 duration-150">
+                                                        <ArrowRight
+                                                            size={14}
+                                                            className="text-slate-800 group-hover:-rotate-45 duration-300"
+                                                        />
                                                     </span>
-                                                    {noti.image && (
-                                                        <div className="w-full aspect-video overflow-hidden rounded-md">
-                                                            <img className="w-full h-full object-cover" src={noti.image} alt="" />
-                                                        </div>
-                                                    )}
-                                                </a>
-                                            </DropdownMenuItem>
-                                        ))
-                                    ) : (
-                                        <DropdownMenuItem className="p-4 flex items-center justify-center">
-                                            {t('tabControl.noNotifications')}
+                                                </div>
+                                                <span className="text-slate-600 text-xs line-clamp-3">
+                                                    {noti.description}
+                                                </span>
+                                                {noti.image && (
+                                                    <div className="w-full aspect-video overflow-hidden rounded-md">
+                                                        <img className="w-full h-full object-cover" src={noti.image} alt="" />
+                                                    </div>
+                                                )}
+                                            </a>
                                         </DropdownMenuItem>
-                                    )}
-                                </DropdownMenuGroup>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    }
+                                    ))
+                                ) : (
+                                    <DropdownMenuItem className="p-4 flex items-center justify-center">
+                                        {t('tabControl.noNotifications')}
+                                    </DropdownMenuItem>
+                                )}
+                            </DropdownMenuGroup>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                     <Button
                         variant={'ghost'}
                         onClick={logout}
